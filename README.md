@@ -1,6 +1,6 @@
 # Atlas Client
 
-A client-only Fabric visual-customization interface for **Minecraft 1.21.11**, styled as a dark plum dashboard with neon magenta gradients and glow.
+A client-only Fabric visual-customization interface for **Minecraft 1.21.11**, styled as a smooth deep-navy dashboard with electric-blue gradients, rounded panels, and a bundled clean UI font.
 
 ## Controls
 

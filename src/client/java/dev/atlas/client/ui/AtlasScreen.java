@@ -8,6 +8,9 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FontDescription;
+import net.minecraft.network.chat.Style;
+import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -18,13 +21,14 @@ import java.util.Map;
 
 /** Atlas's client-only visual customization dashboard. */
 public final class AtlasScreen extends Screen {
-    private static final int PANEL = 0xEE100813;
-    private static final int TEXT = 0xFFFFF0FB;
-    private static final int MUTED = 0xFFC7A6C6;
-    private static final int DIM = 0xFF80617E;
-    private static final int DEFAULT_ACCENT = 0xFFFF28C9;
-    private static final int DEFAULT_BRIGHT = 0xFFFF91E8;
-    private static final int DEFAULT_DARK = 0xFF970B68;
+    private static final int PANEL = 0xEE0B1427;
+    private static final int TEXT = 0xFFF0F6FF;
+    private static final int MUTED = 0xFF9AAAC7;
+    private static final int DIM = 0xFF687A9B;
+    private static final int DEFAULT_ACCENT = 0xFF4CA8FF;
+    private static final int DEFAULT_BRIGHT = 0xFF9BE1FF;
+    private static final int DEFAULT_DARK = 0xFF1D58A2;
+    private static final FontDescription UI_FONT = new FontDescription.Resource(Identifier.fromNamespaceAndPath("atlas", "ui"));
 
     private static final String[] NAV = {"Overview", "Settings", "Visuals", "HUD", "Profiles", "Configs", "About"};
     private static final LinkedHashMap<String, List<VisualOption>> GROUPS = makeVisualGroups();
@@ -70,7 +74,7 @@ public final class AtlasScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         Font font = Minecraft.getInstance().font;
-        graphics.fillGradient(0, 0, width, height, 0xFF08050C, 0xFF130713);
+        graphics.fillGradient(0, 0, width, height, 0xFF070B14, 0xFF0B1427);
         drawAmbient(graphics);
 
         Layout layout = layout();
@@ -100,61 +104,73 @@ public final class AtlasScreen extends Screen {
 
     private void drawSlash(GuiGraphics g, int x, int y, int length, int thickness, int drift, int color) {
         if (length <= 0 || thickness <= 0) return;
-        for (int row = 0; row < thickness; row += 3) {
+        for (int row = 0; row < thickness; row++) {
             int startX = x + drift * row / thickness;
             int rowY = y + row;
             if (rowY < 0 || rowY >= height) continue;
             int left = Math.max(0, startX);
             int right = Math.min(width, startX + length);
-            if (right > left) g.fill(left, rowY, right, Math.min(height, rowY + 3), color);
+            if (right > left) g.fill(left, rowY, right, Math.min(height, rowY + 1), color);
         }
     }
 
     private void drawHeader(GuiGraphics g, Font font, Layout l) {
-        g.fillGradient(0, 0, width, l.headerH, 0xF10A060F, 0xEA100715);
-        g.fill(0, l.headerH - 1, width, l.headerH, withAlpha(accent, 170));
-        int logoX = l.sidebarW + 12;
-        panel(g, logoX, 12, 36, 36, true);
-        g.fillGradient(logoX + 1, 13, logoX + 35, 47, accentBright, accentDark);
-        g.drawCenteredString(font, Component.literal("A"), logoX + 18, 22, 0xFFFFFFFF);
-        g.drawString(font, "Atlas Client", logoX + 47, 13, headingColor(), true);
-        g.drawString(font, "VISUAL INTERFACE  ·  1.21.11", logoX + 48, 30, captionColor(), false);
+        g.fillGradient(0, 0, width, l.headerH, 0xF1080D19, 0xEA0A1526);
+        g.fill(0, l.headerH - 1, width, l.headerH, withAlpha(accent, 150));
+        int logoX = headerLogoX();
+        panel(g, logoX, 10, 46, 46, true);
+        fillRoundedGradient(g, logoX + 2, 12, 42, 42, accentBright, accentDark, 10);
+        drawText(g, font, "A", logoX + 17, 22, 0xFFFFFFFF, true);
+        drawText(g, font, "Atlas Client", logoX + 94, 15, headingColor(), true);
+        drawText(g, font, "VISUAL INTERFACE  ·  1.21.11", logoX + 95, 35, captionColor(), false);
 
-        int searchW = Math.max(88, width - (logoX + 250) - 28);
-        int searchX = logoX + 250;
-        if (searchX + searchW > width - 14) searchX = Math.max(logoX + 46, width - searchW - 14);
-        panel(g, searchX, 15, searchW, 30, false);
-        drawSearchIcon(g, searchX + 10, 22, accentBright);
+        int searchX = headerSearchX();
+        int searchW = headerSearchWidth();
+        panel(g, searchX, 18, searchW, 34, false);
+        drawSearchIcon(g, searchX + 13, 30, accentBright);
         String query = search.isEmpty() ? "Search visual settings..." : search;
-        g.drawString(font, fit(font, query, Math.max(16, searchW - 38)), searchX + 29, 24,
+        drawText(g, font, fit(font, query, Math.max(16, searchW - 48)), searchX + 36, 30,
                 search.isEmpty() ? DIM : TEXT, false);
-        if (searchX + searchW < width - 64) g.drawString(font, "RIGHT SHIFT", width - 87, 24, DIM, false);
+        if (searchX + searchW < width - 94) drawText(g, font, "RIGHT SHIFT", width - 91, 30, accentBright, false);
+    }
+
+    private int headerLogoX() {
+        return width >= 720 ? 48 : 12;
+    }
+
+    private int headerSearchX() {
+        return Math.max(headerLogoX() + 320, width * 32 / 100);
+    }
+
+    private int headerSearchWidth() {
+        return Math.max(88, width - headerSearchX() - 116);
     }
 
     private void drawSidebar(GuiGraphics g, Font font, Layout l, int mouseX, int mouseY) {
         panel(g, 8, l.headerH + 10, l.sidebarW - 8, height - l.headerH - 20, false);
-        int y = l.headerH + 23;
+        int y = l.headerH + 25;
         for (int i = 0; i < NAV.length; i++) {
             String item = NAV[i];
             boolean active = item.equals(activePage);
-            int rowY = y + i * 38;
+            int rowY = y + i * 43;
             if (active) {
-                g.fillGradient(15, rowY, l.sidebarW - 7, rowY + 31, withAlpha(accent, 203), withAlpha(accentDark, 178));
-                g.fill(15, rowY + 4, 17, rowY + 27, accentBright);
-            } else if (inside(mouseX, mouseY, 15, rowY, l.sidebarW - 23, 31)) {
-                g.fill(15, rowY, l.sidebarW - 7, rowY + 31, 0x4A6D1558);
+                fillRoundedGradient(g, 14, rowY, l.sidebarW - 24, 36,
+                        withAlpha(accent, 220), withAlpha(accentDark, 190), 10);
+                fillRounded(g, 14, rowY + 6, 3, 24, accentBright, 2);
+            } else if (inside(mouseX, mouseY, 14, rowY, l.sidebarW - 24, 36)) {
+                fillRounded(g, 14, rowY, l.sidebarW - 24, 36, withAlpha(accent, 46), 10);
             }
-            drawNavIcon(g, i, 24, rowY + 9, active ? 0xFFFFFFFF : accent);
-            if (sidebarLabels && l.sidebarW >= 106) g.drawString(font, item, 43, rowY + 10, active ? TEXT : captionColor(), false);
+            drawNavIcon(g, i, 26, rowY + 12, active ? 0xFFFFFFFF : accent);
+            if (sidebarLabels && l.sidebarW >= 106) drawText(g, font, item, 49, rowY + 13, active ? TEXT : captionColor(), false);
         }
         int footerY = height - 57;
-        g.fill(17, footerY - 8, l.sidebarW - 16, footerY - 7, 0x66512549);
-        g.drawString(font, "ATLAS", 22, footerY, accentBright, true);
-        if (l.sidebarW >= 106) g.drawString(font, "build 1.0.0", 22, footerY + 14, DIM, false);
+        g.fill(17, footerY - 8, l.sidebarW - 16, footerY - 7, 0x66405D86);
+        drawText(g, font, "ATLAS", 22, footerY, accentBright, true);
+        if (l.sidebarW >= 106) drawText(g, font, "build 1.0.0", 22, footerY + 14, DIM, false);
     }
 
     private void drawOverview(GuiGraphics g, Font font, Layout l, int mouseX, int mouseY) {
-        int gap = 8;
+        int gap = 12;
         int cardW = (l.contentW - gap * (l.columns - 1)) / l.columns;
         int groupRows = (GROUPS.size() + l.columns - 1) / l.columns;
         int cardH = (l.contentH - gap * (groupRows - 1)) / groupRows;
@@ -171,15 +187,15 @@ public final class AtlasScreen extends Screen {
     private void drawVisualGroup(GuiGraphics g, Font font, String title, List<VisualOption> options,
                                  int x, int y, int w, int h, int mouseX, int mouseY) {
         panel(g, x, y, w, h, false);
-        g.fillGradient(x + 1, y + 1, x + w - 1, y + 31, 0xB9221024, 0x88220F23);
-        g.fill(x + 1, y + 31, x + w - 1, y + 32, 0x885C1C4E);
-        g.drawString(font, groupGlyph(title), x + 9, y + 11, accentBright, true);
-        g.drawString(font, fit(font, title, Math.max(24, w - 44)), x + 25, y + 11, headingColor(), true);
-        if (sectionCounts) g.drawString(font, Integer.toString(options.size()), x + w - 20, y + 11, DIM, false);
+        fillRoundedTopGradient(g, x + 1, y + 1, w - 2, 36, 0xB9233A5D, 0x88213A5E, 10);
+        g.fill(x + 13, y + 36, x + w - 13, y + 37, withAlpha(accent, 82));
+        drawText(g, font, groupGlyph(title), x + 13, y + 12, accentBright, true);
+        drawText(g, font, fit(font, title, Math.max(24, w - 50)), x + 31, y + 12, headingColor(), true);
+        if (sectionCounts) drawText(g, font, Integer.toString(options.size()), x + w - 23, y + 12, DIM, false);
 
-        int rowHeight = compactSpacing || compactLabels ? 18 : 21;
+        int rowHeight = compactSpacing || compactLabels ? 20 : 24;
         int scroll = scrollByGroup.getOrDefault(title, 0);
-        int rows = Math.max(0, (h - 42) / rowHeight);
+        int rows = Math.max(0, (h - 52) / rowHeight);
         int maxScroll = Math.max(0, options.size() - rows);
         scroll = Math.min(scroll, maxScroll);
         scrollByGroup.put(title, scroll);
@@ -187,27 +203,30 @@ public final class AtlasScreen extends Screen {
             int optionIndex = scroll + i;
             if (optionIndex >= options.size()) break;
             VisualOption option = options.get(optionIndex);
-            int rowY = y + 39 + i * rowHeight;
-            boolean hover = hoverFeedback && inside(mouseX, mouseY, x + 5, rowY - 3, w - 10, rowHeight);
-            if (focusHighlight && option == selectedOption) g.fill(x + 5, rowY - 3, x + w - 5, rowY + rowHeight - 1, withAlpha(accent, 20 + selectedOption.intensity));
-            else if (hover) g.fill(x + 5, rowY - 3, x + w - 5, rowY + rowHeight - 1, withAlpha(accent, 38));
-            drawCheck(g, x + 10, rowY + 2, option.enabled);
-            int labelX = x + 27;
-            int labelWidth = Math.max(16, w - 39);
-            if (option.palette) {
-                g.fill(x + 28, rowY + 3, x + 39, rowY + 13, option.accent);
-                g.fill(x + 28, rowY + 3, x + 39, rowY + 4, option.accentBright);
-                labelX = x + 44;
-                labelWidth = Math.max(16, w - 56);
+            int rowY = y + 45 + i * rowHeight;
+            boolean hover = hoverFeedback && inside(mouseX, mouseY, x + 8, rowY - 2, w - 16, rowHeight - 1);
+            if (focusHighlight && option == selectedOption) {
+                fillRounded(g, x + 8, rowY - 2, w - 16, rowHeight - 1, withAlpha(accent, 24 + selectedOption.intensity / 2), 6);
+            } else if (hover) {
+                fillRounded(g, x + 8, rowY - 2, w - 16, rowHeight - 1, withAlpha(accent, 34), 6);
             }
-            g.drawString(font, fit(font, option.name, labelWidth), labelX, rowY + 3,
-                    option == selectedOption ? TEXT : (option.enabled ? 0xFFFFD9F1 : (highContrast ? TEXT : captionColor())), false);
+            drawCheck(g, x + 13, rowY + 5, option.enabled);
+            int labelX = x + 34;
+            int labelWidth = Math.max(16, w - 46);
+            if (option.palette) {
+                fillRounded(g, x + 35, rowY + 7, 13, 11, option.accent, 4);
+                g.fill(x + 38, rowY + 8, x + 45, rowY + 9, option.accentBright);
+                labelX = x + 55;
+                labelWidth = Math.max(16, w - 68);
+            }
+            drawText(g, font, fit(font, option.name, labelWidth), labelX, rowY + 7,
+                    option == selectedOption ? TEXT : (option.enabled ? 0xFFD9ECFF : (highContrast ? TEXT : captionColor())), false);
         }
         if (options.size() > rows && rows > 0) {
             int trackX = x + w - 5;
-            int trackY = y + 38;
-            int trackH = Math.max(10, h - 47);
-            g.fill(trackX, trackY, trackX + 2, trackY + trackH, 0x66431A3D);
+            int trackY = y + 44;
+            int trackH = Math.max(10, h - 54);
+            g.fill(trackX, trackY, trackX + 2, trackY + trackH, 0x66405B7D);
             int thumbH = Math.max(13, trackH * rows / options.size());
             int thumbY = trackY + (trackH - thumbH) * scroll / Math.max(1, maxScroll);
             g.fillGradient(trackX, thumbY, trackX + 2, thumbY + thumbH, accentBright, accentDark);
@@ -220,39 +239,39 @@ public final class AtlasScreen extends Screen {
         int w = l.detailW;
         int h = l.contentH;
         panel(g, x, y, w, h, true);
-        g.fillGradient(x + 1, y + 1, x + w - 1, y + 36, 0xD8200D20, 0xA8160B19);
-        g.drawString(font, "APPEARANCE", x + 13, y + 9, accentBright, true);
-        g.drawString(font, fit(font, selectedOption.name, w - 24), x + 13, y + 22, headingColor(), true);
-        int cursorY = y + 51;
-        g.drawString(font, selectedOption.group.toUpperCase(Locale.ROOT), x + 13, cursorY, captionColor(), false);
-        cursorY += 29;
-        g.drawString(font, "Active", x + 13, cursorY + 3, TEXT, false);
-        drawSwitch(g, x + w - 48, cursorY - 2, selectedOption.enabled);
-        cursorY += 35;
-        g.fill(x + 12, cursorY, x + w - 12, cursorY + 1, 0x66522248);
-        cursorY += 14;
-        g.drawString(font, "Intensity", x + 13, cursorY, TEXT, false);
-        g.drawString(font, selectedOption.intensity + "%", x + w - 42, cursorY, captionColor(), false);
-        drawSlider(g, x + 13, cursorY + 15, w - 26, selectedOption.intensity / 100.0);
-        cursorY += 48;
-        g.drawString(font, "Treatment", x + 13, cursorY, TEXT, false);
-        g.drawString(font, selectedOption.treatment, x + w - 64, cursorY, accentBright, false);
+        fillRoundedTopGradient(g, x + 1, y + 1, w - 2, 44, 0xD8203B5F, 0xA8172942, 12);
+        drawText(g, font, "APPEARANCE", x + 16, y + 11, accentBright, true);
+        drawText(g, font, fit(font, selectedOption.name, w - 30), x + 16, y + 27, headingColor(), true);
+        int cursorY = y + 60;
+        drawText(g, font, selectedOption.group.toUpperCase(Locale.ROOT), x + 16, cursorY, captionColor(), false);
         cursorY += 32;
-        int noteH = Math.max(42, Math.min(68, h - (cursorY - y) - 58));
+        drawText(g, font, "Active", x + 16, cursorY + 4, TEXT, false);
+        drawSwitch(g, x + w - 55, cursorY - 1, selectedOption.enabled);
+        cursorY += 38;
+        g.fill(x + 15, cursorY, x + w - 15, cursorY + 1, 0x66405D86);
+        cursorY += 17;
+        drawText(g, font, "Intensity", x + 16, cursorY, TEXT, false);
+        drawText(g, font, selectedOption.intensity + "%", x + w - 48, cursorY, captionColor(), false);
+        drawSlider(g, x + 16, cursorY + 17, w - 32, selectedOption.intensity / 100.0);
+        cursorY += 52;
+        drawText(g, font, "Treatment", x + 16, cursorY, TEXT, false);
+        drawText(g, font, selectedOption.treatment, x + w - 70, cursorY, accentBright, false);
+        cursorY += 36;
+        int noteH = Math.max(48, Math.min(76, h - (cursorY - y) - 66));
         if (selectedOption.treatment.equals("Soft")) {
-            g.fillGradient(x + 11, cursorY, x + w - 11, cursorY + noteH, withAlpha(accent, 58), 0x7030142C);
+            fillRoundedGradient(g, x + 13, cursorY, w - 26, noteH, withAlpha(accent, 64), 0x70243C5E, 10);
         } else {
-            g.fill(x + 11, cursorY, x + w - 11, cursorY + noteH, 0xB01B0C19);
+            fillRounded(g, x + 13, cursorY, w - 26, noteH, 0xB0172942, 10);
         }
-        g.drawString(font, "STYLE NOTE", x + 20, cursorY + 8, accentBright, true);
-        drawWrapped(g, font, selectedOption.description, x + 20, cursorY + 22, w - 42, noteH - 24, captionColor());
-        g.drawString(font, "VISUAL CONTROLS ONLY", x + 12, y + h - 29, DIM, false);
+        drawText(g, font, "STYLE NOTE", x + 22, cursorY + 10, accentBright, true);
+        drawWrapped(g, font, selectedOption.description, x + 22, cursorY + 26, w - 44, noteH - 28, captionColor());
+        drawText(g, font, "VISUAL CONTROLS ONLY", x + 12, y + h - 29, DIM, false);
     }
 
     private void drawUtilityPage(GuiGraphics g, Font font, Layout l) {
         int x = l.contentX;
         int y = l.contentY;
-        int w = l.contentW + l.detailW + (l.detailW > 0 ? 10 : 0);
+        int w = l.contentW + l.detailW + (l.detailW > 0 ? 14 : 0);
         panel(g, x, y, w, l.contentH, false);
         String subtitle = switch (activePage) {
             case "Settings" -> "Tune the Atlas interface to your preference.";
@@ -262,9 +281,9 @@ public final class AtlasScreen extends Screen {
             case "Configs" -> "Theme saving and import/export are planned for later.";
             default -> "Atlas Client · a visual-first interface for Minecraft 1.21.11.";
         };
-        g.drawString(font, activePage.toUpperCase(Locale.ROOT), x + 18, y + 18, accentBright, true);
-        g.drawString(font, subtitle, x + 18, y + 36, captionColor(), false);
-        g.fill(x + 18, y + 57, x + w - 18, y + 58, 0x66522248);
+        drawText(g, font, activePage.toUpperCase(Locale.ROOT), x + 18, y + 18, accentBright, true);
+        drawText(g, font, subtitle, x + 18, y + 36, captionColor(), false);
+        g.fill(x + 18, y + 57, x + w - 18, y + 58, 0x66405D86);
 
         if (activePage.equals("Profiles") || activePage.equals("Configs") || activePage.equals("About")) {
             String[] lines = activePage.equals("About")
@@ -272,27 +291,28 @@ public final class AtlasScreen extends Screen {
                     : new String[]{"Coming soon", "Current appearance choices stay in memory for this game session.", "No files are written and no external config packs are loaded."};
             int lineY = y + 81;
             for (String line : lines) {
-                g.drawString(font, line, x + 18, lineY, lineY == y + 81 ? TEXT : captionColor(), false);
+                drawText(g, font, line, x + 18, lineY, lineY == y + 81 ? TEXT : captionColor(), false);
                 lineY += 22;
             }
             return;
         }
 
         String[] options = utilityOptions(activePage);
-        int rowY = y + 75;
+        int rowY = y + 84;
         for (int i = 0; i < options.length; i++) {
             String option = options[i];
             int col = i % 2;
             int row = i / 2;
-            int cellX = x + 18 + col * ((w - 46) / 2);
-            int cellY = rowY + row * 55;
-            int cellW = (w - 54) / 2;
-            g.fillGradient(cellX, cellY, cellX + cellW, cellY + 42,
-                    0xA81D0D1A, gradientPanels ? 0x881A0D19 : 0xAA1D0D1A);
-            g.drawString(font, fit(font, option, cellW - 55), cellX + 11, cellY + 15, TEXT, false);
-            drawSwitch(g, cellX + cellW - 42, cellY + 10, utilityValue(option));
+            int cellX = x + 20 + col * ((w - 52) / 2);
+            int cellY = rowY + row * 62;
+            int cellW = (w - 60) / 2;
+            fillRoundedGradient(g, cellX, cellY, cellW, 48,
+                    0xA8192B45, gradientPanels ? 0x88152A47 : 0xAA19304D, 10);
+            drawRoundedBorder(g, cellX, cellY, cellW, 48, withAlpha(accent, 80), 10);
+            drawText(g, font, fit(font, option, cellW - 64), cellX + 14, cellY + 17, TEXT, false);
+            drawSwitch(g, cellX + cellW - 52, cellY + 14, utilityValue(option));
         }
-        g.drawString(font, "Appearance adjustments are local to this game session.", x + 18, y + l.contentH - 12, DIM, false);
+        drawText(g, font, "Appearance adjustments are local to this game session.", x + 18, y + l.contentH - 12, DIM, false);
     }
 
     private String[] utilityOptions(String page) {
@@ -372,12 +392,20 @@ public final class AtlasScreen extends Screen {
         }
     }
 
+    private static Component uiText(String value, boolean emphasize) {
+        return Component.literal(value).withStyle(Style.EMPTY.withFont(UI_FONT).withBold(emphasize));
+    }
+
+    private static void drawText(GuiGraphics graphics, Font font, String value, int x, int y, int color, boolean shadow) {
+        graphics.drawString(font, uiText(value, shadow), x, y, color, shadow);
+    }
+
     private void drawSearchIcon(GuiGraphics g, int x, int y, int color) {
         g.fill(x + 1, y, x + 7, y + 1, color);
         g.fill(x, y + 1, x + 1, y + 7, color);
         g.fill(x + 7, y + 1, x + 8, y + 6, color);
         g.fill(x + 1, y + 7, x + 6, y + 8, color);
-        g.fill(x + 2, y + 2, x + 6, y + 6, 0xFF100813);
+        g.fill(x + 2, y + 2, x + 6, y + 6, 0xFF0B1427);
         g.fill(x + 7, y + 7, x + 11, y + 9, color);
     }
 
@@ -393,12 +421,12 @@ public final class AtlasScreen extends Screen {
                 g.fill(x + 4, y, x + 8, y + 12, color);
                 g.fill(x, y + 4, x + 12, y + 8, color);
                 g.fill(x + 2, y + 2, x + 10, y + 10, withAlpha(color, 190));
-                g.fill(x + 5, y + 5, x + 7, y + 7, 0xFF130713);
+                g.fill(x + 5, y + 5, x + 7, y + 7, 0xFF0B1427);
             }
             case 2 -> {
                 g.fill(x + 1, y + 5, x + 11, y + 7, color);
                 g.fill(x + 3, y + 3, x + 9, y + 9, color);
-                g.fill(x + 5, y + 5, x + 7, y + 7, 0xFF130713);
+                g.fill(x + 5, y + 5, x + 7, y + 7, 0xFF0B1427);
             }
             case 3 -> {
                 g.fill(x, y + 7, x + 3, y + 12, color);
@@ -416,7 +444,7 @@ public final class AtlasScreen extends Screen {
             }
             default -> {
                 g.fill(x + 1, y + 1, x + 12, y + 12, color);
-                g.fill(x + 3, y + 3, x + 10, y + 10, 0xFF130713);
+                g.fill(x + 3, y + 3, x + 10, y + 10, 0xFF0B1427);
                 g.fill(x + 6, y + 5, x + 8, y + 9, color);
                 g.fill(x + 6, y + 3, x + 8, y + 4, color);
             }
@@ -424,62 +452,131 @@ public final class AtlasScreen extends Screen {
     }
 
     private void drawCheck(GuiGraphics g, int x, int y, boolean checked) {
-        g.fill(x, y, x + 13, y + 13, checked ? accent : 0xFF160C1A);
-        g.fill(x, y, x + 13, y + 1, checked ? accentBright : 0xFF684A65);
+        fillRounded(g, x, y, 15, 15, checked ? accent : 0xFF101B2E, 4);
+        drawRoundedBorder(g, x, y, 15, 15, checked ? withAlpha(accentBright, 230) : 0xFF405B7D, 4);
         if (checked) {
-            g.fill(x + 3, y + 6, x + 5, y + 9, 0xFFFFFFFF);
-            g.fill(x + 5, y + 8, x + 10, y + 10, 0xFFFFFFFF);
-        } else {
-            g.fill(x, y + 12, x + 13, y + 13, 0xFF39253A);
+            g.fill(x + 3, y + 7, x + 6, y + 10, 0xFFFFFFFF);
+            g.fill(x + 5, y + 9, x + 11, y + 11, 0xFFFFFFFF);
         }
     }
 
     private void drawSwitch(GuiGraphics g, int x, int y, boolean on) {
-        fillRounded(g, x, y, 39, 20, on ? accent : 0xFF321B30, 10);
+        fillRounded(g, x, y, 39, 20, on ? accent : 0xFF203752, 10);
         int knobX = on ? x + 22 : x + 3;
         fillRounded(g, knobX, y + 3, 14, 14, 0xFFFFF7FD, 7);
         g.fill(knobX + 3, y + 4, knobX + 11, y + 5, 0x66FFFFFF);
     }
 
     private static void fillRounded(GuiGraphics g, int x, int y, int w, int h, int color, int radius) {
+        fillRoundedGradient(g, x, y, w, h, color, color, radius);
+    }
+
+    private static int cornerInset(int row, int height, int radius) {
+        int edgeDistance = row < radius ? radius - row - 1 : row >= height - radius ? row - (height - radius) : -1;
+        return edgeDistance < 0 ? 0 : radius - (int) Math.sqrt(radius * radius - edgeDistance * edgeDistance);
+    }
+
+    private static int blendColor(int from, int to, float amount) {
+        float t = Math.max(0.0f, Math.min(1.0f, amount));
+        int a = Math.round(((from >>> 24) & 255) * (1.0f - t) + ((to >>> 24) & 255) * t);
+        int r = Math.round(((from >>> 16) & 255) * (1.0f - t) + ((to >>> 16) & 255) * t);
+        int g = Math.round(((from >>> 8) & 255) * (1.0f - t) + ((to >>> 8) & 255) * t);
+        int b = Math.round((from & 255) * (1.0f - t) + (to & 255) * t);
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    private static void fillRoundedGradient(GuiGraphics g, int x, int y, int w, int h,
+                                            int top, int bottom, int radius) {
+        if (w <= 0 || h <= 0) return;
         int r = Math.max(0, Math.min(radius, Math.min(w, h) / 2));
-        for (int row = 0; row < h; row++) {
-            int edgeDistance = row < r ? r - row - 1 : row >= h - r ? row - (h - r) : -1;
-            int inset = edgeDistance < 0 ? 0 : r - (int) Math.sqrt(r * r - edgeDistance * edgeDistance);
+        if (r == 0) {
+            g.fillGradient(x, y, x + w, y + h, top, bottom);
+            return;
+        }
+        int middleTop = y + r;
+        int middleBottom = y + h - r;
+        if (middleBottom > middleTop) {
+            float topMix = (middleTop - y) / (float) Math.max(1, h - 1);
+            float bottomMix = (middleBottom - 1 - y) / (float) Math.max(1, h - 1);
+            g.fillGradient(x, middleTop, x + w, middleBottom,
+                    blendColor(top, bottom, topMix), blendColor(top, bottom, bottomMix));
+        }
+        for (int row = 0; row < r; row++) {
+            int inset = cornerInset(row, h, r);
+            int topColor = blendColor(top, bottom, row / (float) Math.max(1, h - 1));
+            int bottomRow = h - 1 - row;
+            int bottomColor = blendColor(top, bottom, bottomRow / (float) Math.max(1, h - 1));
+            g.fill(x + inset, y + row, x + w - inset, y + row + 1, topColor);
+            g.fill(x + inset, y + bottomRow, x + w - inset, y + bottomRow + 1, bottomColor);
+        }
+    }
+
+    private static void fillRoundedTopGradient(GuiGraphics g, int x, int y, int w, int h,
+                                               int top, int bottom, int radius) {
+        if (w <= 0 || h <= 0) return;
+        int r = Math.max(0, Math.min(radius, Math.min(w, h) / 2));
+        int middleTop = y + r;
+        if (h > r) g.fillGradient(x, middleTop, x + w, y + h, blendColor(top, bottom, r / (float) h), bottom);
+        for (int row = 0; row < r; row++) {
+            int inset = r - (int) Math.sqrt(r * r - (r - row - 1) * (r - row - 1));
+            int color = blendColor(top, bottom, row / (float) Math.max(1, h - 1));
             g.fill(x + inset, y + row, x + w - inset, y + row + 1, color);
         }
     }
 
+    private static void drawRoundedBorder(GuiGraphics g, int x, int y, int w, int h, int color, int radius) {
+        if (w <= 0 || h <= 0) return;
+        int r = Math.max(0, Math.min(radius, Math.min(w, h) / 2));
+        if (r == 0) {
+            g.fill(x, y, x + w, y + 1, color);
+            g.fill(x, y + h - 1, x + w, y + h, color);
+            g.fill(x, y, x + 1, y + h, color);
+            g.fill(x + w - 1, y, x + w, y + h, color);
+            return;
+        }
+        g.fill(x + r, y, x + w - r, y + 1, color);
+        g.fill(x + r, y + h - 1, x + w - r, y + h, color);
+        if (h > 2 * r) {
+            g.fill(x, y + r, x + 1, y + h - r, color);
+            g.fill(x + w - 1, y + r, x + w, y + h - r, color);
+        }
+        for (int row = 0; row < r; row++) {
+            int inset = cornerInset(row, h, r);
+            g.fill(x + inset, y + row, x + inset + 1, y + row + 1, color);
+            g.fill(x + w - inset - 1, y + row, x + w - inset, y + row + 1, color);
+            int bottomRow = h - 1 - row;
+            g.fill(x + inset, y + bottomRow, x + inset + 1, y + bottomRow + 1, color);
+            g.fill(x + w - inset - 1, y + bottomRow, x + w - inset, y + bottomRow + 1, color);
+        }
+    }
+
     private void drawSlider(GuiGraphics g, int x, int y, int w, double amount) {
-        g.fill(x, y + 4, x + w, y + 7, 0xFF40203A);
+        fillRounded(g, x, y + 5, w, 4, 0xFF2A456A, 2);
         int fillW = Math.max(0, Math.min(w, (int) (w * amount)));
-        g.fillGradient(x, y + 4, x + fillW, y + 7, accentBright, accentDark);
-        int knobX = x + fillW - 4;
-        g.fill(knobX, y, knobX + 9, y + 15, 0xFFECF6FF);
+        if (fillW > 0) fillRoundedGradient(g, x, y + 5, fillW, 4, accentBright, accentDark, 2);
+        int knobX = Math.max(x - 2, Math.min(x + w - 8, x + fillW - 4));
+        fillRounded(g, knobX, y, 10, 16, 0xFFEAF5FF, 5);
+        g.fill(knobX + 2, y + 2, knobX + 8, y + 3, 0x66FFFFFF);
     }
 
     private void panel(GuiGraphics g, int x, int y, int w, int h, boolean accentPanel) {
         if (w <= 0 || h <= 0) return;
+        int radius = Math.min(12, Math.min(w, h) / 3);
         if (edgeGlow) {
-            int aura = withAlpha(accent, accentPanel ? 30 : 18);
-            g.fill(x - 1, y - 1, x + w + 1, y, aura);
-            g.fill(x - 1, y + h, x + w + 1, y + h + 1, aura);
-            g.fill(x - 1, y, x, y + h, aura);
-            g.fill(x + w, y, x + w + 1, y + h, aura);
+            int aura = withAlpha(accent, accentPanel ? 34 : 23);
+            drawRoundedBorder(g, x - 1, y - 1, w + 2, h + 2, aura, radius + 1);
         }
-        if (quietShadows) g.fill(x + 2, y + 3, x + w + 2, y + h + 3, 0x50000000);
-        int surface = accentPanel ? (glassOverlay ? 0xC8120818 : 0xF1110715) : (glassOverlay ? 0xC80D0710 : PANEL);
-        int surfaceBottom = glassOverlay ? 0xA009050D : 0xF009050D;
-        if (gradientPanels) g.fillGradient(x, y, x + w, y + h, surface, surfaceBottom);
-        else g.fill(x, y, x + w, y + h, surface);
-        int edgeAlpha = Math.min(235, 52 + intensityOf("Edge glow", 65) * 3);
-        int border = accentPanel || edgeGlow ? withAlpha(accent, accentPanel ? 235 : edgeAlpha) : 0x88613A58;
-        if (softEdges) border = withAlpha(border, 205);
-        g.fill(x, y, x + w, y + 1, border);
-        g.fill(x, y + h - 1, x + w, y + h, withAlpha(accentDark, softEdges ? 145 : 205));
-        g.fill(x, y + 1, x + 1, y + h - 1, border);
-        g.fill(x + w - 1, y + 1, x + w, y + h - 1, border);
-        if (glassOverlay && h > 6) g.fill(x + 3, y + 2, x + w - 3, y + 3, withAlpha(accentBright, 28));
+        if (quietShadows) fillRounded(g, x + 2, y + 4, w, h, 0x50000000, radius);
+        int surface = accentPanel ? (glassOverlay ? 0xC8121E35 : 0xF1101C31) : (glassOverlay ? 0xC80C172A : PANEL);
+        int surfaceBottom = glassOverlay ? 0xA0091427 : 0xF0091427;
+        if (gradientPanels) fillRoundedGradient(g, x, y, w, h, surface, surfaceBottom, radius);
+        else fillRounded(g, x, y, w, h, surface, radius);
+        int edgeAlpha = Math.min(235, 55 + intensityOf("Edge glow", 65) * 3);
+        int border = accentPanel || edgeGlow ? withAlpha(accent, accentPanel ? 235 : edgeAlpha) : 0x8845699B;
+        if (softEdges) border = withAlpha(border, 215);
+        drawRoundedBorder(g, x, y, w, h, border, radius);
+        if (glassOverlay && h > 6) fillRoundedTopGradient(g, x + 2, y + 2, w - 4, Math.min(18, h - 4),
+                withAlpha(accentBright, 34), withAlpha(accentBright, 0), Math.max(2, radius - 2));
     }
 
     private static void drawWrapped(GuiGraphics g, Font font, String text, int x, int y, int maxW, int maxH, int color) {
@@ -487,9 +584,9 @@ public final class AtlasScreen extends Screen {
         int lineY = y;
         for (String word : text.split(" ")) {
             String candidate = line.length() == 0 ? word : line + " " + word;
-            if (font.width(candidate) > maxW && line.length() > 0) {
-                g.drawString(font, line.toString(), x, lineY, color, false);
-                lineY += 10;
+            if (font.width(uiText(candidate, false)) > maxW && line.length() > 0) {
+                drawText(g, font, line.toString(), x, lineY, color, false);
+                lineY += 13;
                 line.setLength(0);
                 if (lineY > y + maxH - 8) return;
                 line.append(word);
@@ -498,26 +595,26 @@ public final class AtlasScreen extends Screen {
                 line.append(word);
             }
         }
-        if (line.length() > 0 && lineY <= y + maxH - 8) g.drawString(font, line.toString(), x, lineY, color, false);
+        if (line.length() > 0 && lineY <= y + maxH - 8) drawText(g, font, line.toString(), x, lineY, color, false);
     }
 
     private static String fit(Font font, String text, int maxWidth) {
-        if (maxWidth <= 0 || font.width(text) <= maxWidth) return text;
+        if (maxWidth <= 0 || font.width(uiText(text, false)) <= maxWidth) return text;
         String ellipsis = "…";
         int end = text.length();
-        while (end > 0 && font.width(text.substring(0, end) + ellipsis) > maxWidth) end--;
+        while (end > 0 && font.width(uiText(text.substring(0, end) + ellipsis, false)) > maxWidth) end--;
         return end == 0 ? "" : text.substring(0, end) + ellipsis;
     }
 
     private Layout layout() {
-        int side = width < 460 ? 66 : width < 720 ? 96 : 132;
-        int header = 59;
-        int top = header + 11;
-        int bottom = height - 12;
-        int detailW = width >= 680 ? Math.max(164, Math.min(205, width / 5)) : 0;
-        int detailGap = detailW > 0 ? 10 : 0;
-        int contentX = side + 13;
-        int rightMargin = 13;
+        int side = width < 460 ? 74 : width < 720 ? 112 : 148;
+        int header = 68;
+        int top = header + 14;
+        int bottom = height - 15;
+        int detailW = width >= 740 ? Math.max(190, Math.min(220, width / 6)) : 0;
+        int detailGap = detailW > 0 ? 14 : 0;
+        int contentX = side + 16;
+        int rightMargin = 16;
         int contentW = Math.max(54, width - contentX - rightMargin - detailW - detailGap);
         int columns = contentW >= 840 ? (wideCards ? 4 : 6)
                 : contentW >= 600 ? (wideCards ? 3 : 4)
@@ -535,54 +632,52 @@ public final class AtlasScreen extends Screen {
         int button = event.button();
         if (button != 0) return super.mouseClicked(event, doubleClick);
         Layout l = layout();
-        int navTop = l.headerH + 23;
+        int navTop = l.headerH + 25;
         for (int i = 0; i < NAV.length; i++) {
-            int rowY = navTop + i * 38;
-            if (inside(mouseX, mouseY, 15, rowY, l.sidebarW - 22, 31)) {
+            int rowY = navTop + i * 43;
+            if (inside(mouseX, mouseY, 14, rowY, l.sidebarW - 24, 36)) {
                 activePage = NAV[i];
                 return true;
             }
         }
-        int logoX = l.sidebarW + 12;
-        int searchW = Math.max(88, width - (logoX + 250) - 28);
-        int searchX = logoX + 250;
-        if (searchX + searchW > width - 14) searchX = Math.max(logoX + 46, width - searchW - 14);
-        if (inside(mouseX, mouseY, searchX, 15, searchW, 30)) return true;
+        int searchX = headerSearchX();
+        int searchW = headerSearchWidth();
+        if (inside(mouseX, mouseY, searchX, 18, searchW, 34)) return true;
 
         if (activePage.equals("Overview")) {
             if (l.detailW > 0) {
                 int x = l.detailX;
                 int y = l.contentY;
                 int w = l.detailW;
-                int activeY = y + 51 + 29;
+                int activeY = y + 60 + 32;
                 if (inside(mouseX, mouseY, x + w - 54, activeY - 7, 48, 28)) {
                     setVisualOption(selectedOption, !selectedOption.enabled);
                     return true;
                 }
-                int sliderY = activeY + 35 + 14 + 15;
+                int sliderY = activeY + 72;
                 if (inside(mouseX, mouseY, x + 10, sliderY - 3, w - 20, 19)) {
                     selectedOption.intensity = (int) Math.round(Math.max(0, Math.min(1, (mouseX - (x + 13)) / (w - 26.0))) * 100);
                     return true;
                 }
-                int treatmentY = sliderY + 33;
+                int treatmentY = sliderY + 35;
                 if (inside(mouseX, mouseY, x + 10, treatmentY - 4, w - 20, 25)) {
                     selectedOption.treatment = selectedOption.treatment.equals("Soft") ? "Crisp" : "Soft";
                     return true;
                 }
             }
-            int gap = 8;
+            int gap = 12;
             int cardW = (l.contentW - gap * (l.columns - 1)) / l.columns;
             int groupRows = (GROUPS.size() + l.columns - 1) / l.columns;
             int cardH = (l.contentH - gap * (groupRows - 1)) / groupRows;
-            int rowHeight = compactSpacing || compactLabels ? 18 : 21;
+            int rowHeight = compactSpacing || compactLabels ? 20 : 24;
             int groupIndex = 0;
             for (Map.Entry<String, List<VisualOption>> group : GROUPS.entrySet()) {
                 int x = l.contentX + (groupIndex % l.columns) * (cardW + gap);
                 int y = l.contentY + (groupIndex / l.columns) * (cardH + gap);
-                if (inside(mouseX, mouseY, x, y + 38, cardW, cardH - 39)) {
+                if (inside(mouseX, mouseY, x, y + 44, cardW, cardH - 45)) {
                     List<VisualOption> options = visibleOptions(group.getValue());
-                    int rows = Math.max(0, (cardH - 42) / rowHeight);
-                    int clickedIndex = scrollByGroup.getOrDefault(group.getKey(), 0) + (int) ((mouseY - (y + 39)) / rowHeight);
+                    int rows = Math.max(0, (cardH - 52) / rowHeight);
+                    int clickedIndex = scrollByGroup.getOrDefault(group.getKey(), 0) + (int) ((mouseY - (y + 45)) / rowHeight);
                     if (clickedIndex >= 0 && clickedIndex < options.size()
                             && clickedIndex < scrollByGroup.getOrDefault(group.getKey(), 0) + rows) {
                         selectedOption = options.get(clickedIndex);
@@ -599,11 +694,11 @@ public final class AtlasScreen extends Screen {
             String[] options = utilityOptions(activePage);
             int x = l.contentX;
             int y = l.contentY;
-            int w = l.contentW + l.detailW + (l.detailW > 0 ? 10 : 0);
+            int w = l.contentW + l.detailW + (l.detailW > 0 ? 14 : 0);
             for (int index = 0; index < options.length; index++) {
-                int cellX = x + 18 + (index % 2) * ((w - 46) / 2);
-                int cellY = y + 75 + (index / 2) * 55;
-                if (inside(mouseX, mouseY, cellX, cellY, (w - 54) / 2, 42)) {
+                int cellX = x + 20 + (index % 2) * ((w - 52) / 2);
+                int cellY = y + 84 + (index / 2) * 62;
+                if (inside(mouseX, mouseY, cellX, cellY, (w - 60) / 2, 48)) {
                     toggleUtilityOption(options[index]);
                     return true;
                 }
@@ -616,17 +711,17 @@ public final class AtlasScreen extends Screen {
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         if (!activePage.equals("Overview")) return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
         Layout l = layout();
-        int gap = 8;
+        int gap = 12;
         int cardW = (l.contentW - gap * (l.columns - 1)) / l.columns;
         int groupRows = (GROUPS.size() + l.columns - 1) / l.columns;
         int cardH = (l.contentH - gap * (groupRows - 1)) / groupRows;
         int groupIndex = 0;
-        int rowHeight = compactSpacing || compactLabels ? 18 : 21;
+        int rowHeight = compactSpacing || compactLabels ? 20 : 24;
         for (String group : GROUPS.keySet()) {
             int x = l.contentX + (groupIndex % l.columns) * (cardW + gap);
             int y = l.contentY + (groupIndex / l.columns) * (cardH + gap);
             if (inside(mouseX, mouseY, x, y, cardW, cardH)) {
-                int rows = Math.max(0, (cardH - 42) / rowHeight);
+                int rows = Math.max(0, (cardH - 52) / rowHeight);
                 int maxScroll = Math.max(0, visibleOptions(GROUPS.get(group)).size() - rows);
                 int current = scrollByGroup.getOrDefault(group, 0);
                 scrollByGroup.put(group, Math.max(0, Math.min(maxScroll, current - (int) Math.signum(verticalAmount) * 2)));
@@ -698,10 +793,10 @@ public final class AtlasScreen extends Screen {
     private static LinkedHashMap<String, List<VisualOption>> makeVisualGroups() {
         LinkedHashMap<String, List<VisualOption>> groups = new LinkedHashMap<>();
         List<VisualOption> palettes = new ArrayList<>();
-        palettes.add(VisualOption.palette("Neon rose", "Black-plum panels with vivid fuchsia neon accents.", DEFAULT_ACCENT, DEFAULT_BRIGHT, DEFAULT_DARK, true));
-        palettes.add(VisualOption.palette("Violet pulse", "Deep violet surfaces with a soft ultraviolet glow.", 0xFFB85AFF, 0xFFE5A4FF, 0xFF6E27A8, false));
-        palettes.add(VisualOption.palette("Orchid", "Saturated orchid pink with warm rose highlights.", 0xFFFF4EAA, 0xFFFFA0D2, 0xFF9B1D67, false));
-        palettes.add(VisualOption.palette("Ocean blue", "A cool blue accent for a calmer interface.", 0xFF3986FF, 0xFF8EB8FF, 0xFF214DAB, false));
+        palettes.add(VisualOption.palette("Ocean blue", "Deep navy panels with bright electric-blue accents.", DEFAULT_ACCENT, DEFAULT_BRIGHT, DEFAULT_DARK, true));
+        palettes.add(VisualOption.palette("Glacier", "Icy blue surfaces with a soft cyan highlight.", 0xFF4CCCF3, 0xFFB5F0FF, 0xFF267BAF, false));
+        palettes.add(VisualOption.palette("Sapphire", "A saturated royal blue with crisp pale highlights.", 0xFF4D78FF, 0xFFA9BCFF, 0xFF294BAA, false));
+        palettes.add(VisualOption.palette("Midnight cyan", "Cool cyan glow over deep midnight-blue surfaces.", 0xFF25BFE4, 0xFF8DEAFF, 0xFF12628B, false));
         groups.put("Palette", palettes);
         groups.put("Surfaces", options("Surfaces",
                 "Gradient panels", "Glass overlay", "Soft edges", "Quiet shadows"));

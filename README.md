@@ -4,7 +4,7 @@ A client-only Fabric visual-customization interface for **Minecraft 1.21.11**, s
 
 ## Controls
 
-- Press **Right Shift** to open or close Atlas; Escape closes it.
+- Press **Right Shift** to open or close Atlas; Escape closes it without passing the keypress through to the game.
 - Use the sidebar to move between Overview, Settings, Visuals, HUD, Profiles, Configs, and About.
 - The Overview's center intentionally contains no module rows. Scroll over it to smoothly move between the empty category panes for palettes, surfaces, lighting, typography, layout, and feedback.
 - Settings, Visuals, and HUD pages contain interface-only toggles; no gameplay modules are included.

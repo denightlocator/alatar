@@ -33,6 +33,7 @@ public final class AtlasScreen extends Screen {
 
     private String activePage = "Overview";
     private String search = "";
+    private boolean closeRequested;
     private double categoryScrollTarget;
     private double categoryScrollPosition;
     private long lastCategoryAnimationNanos;
@@ -70,6 +71,15 @@ public final class AtlasScreen extends Screen {
     @Override
     public boolean isPauseScreen() {
         return false;
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (closeRequested) {
+            closeRequested = false;
+            Minecraft.getInstance().setScreen(null);
+        }
     }
 
     @Override
@@ -297,8 +307,8 @@ public final class AtlasScreen extends Screen {
             case "Settings" -> "Tune the Atlas interface to your preference.";
             case "Visuals" -> "Personalize colors, panels, lighting, and visual density.";
             case "HUD" -> "Choose which interface elements are shown.";
-            case "Profiles" -> "Visual profiles are planned for a later pass.";
-            case "Configs" -> "Theme saving and import/export are planned for later.";
+            case "Profiles" -> "Visual profile tools and presets.";
+            case "Configs" -> "Appearance configuration and local storage.";
             default -> "Atlas Client · a visual-first interface for Minecraft 1.21.11.";
         };
         drawText(g, font, activePage.toUpperCase(Locale.ROOT), x + 18, y + 18, accentBright, true);
@@ -306,40 +316,46 @@ public final class AtlasScreen extends Screen {
         g.fill(x + 18, y + 57, x + w - 18, y + 58, 0x66405D86);
 
         if (activePage.equals("Profiles") || activePage.equals("Configs") || activePage.equals("About")) {
-            String[] lines = activePage.equals("About")
-                    ? new String[]{"Atlas Client", "Fabric client interface for Minecraft 1.21.11.", "Right Shift opens and closes this dashboard.", "This build focuses on visual styling; no gameplay features are included."}
-                    : new String[]{"Coming soon", "Current appearance choices stay in memory for this game session.", "No files are written and no external config packs are loaded."};
-            int lineY = y + 81;
-            for (String line : lines) {
-                drawText(g, font, line, x + 18, lineY, lineY == y + 81 ? TEXT : captionColor(), false);
-                lineY += 22;
+            int rowY = y + 72;
+            String[] lines = utilityInfoRows(activePage);
+            for (int i = 0; i < lines.length; i++) {
+                int cardY = rowY + i * 40;
+                fillRoundedGradient(g, x + 16, cardY, w - 32, 32, 0xA8192B45, 0x88152A47, 9);
+                drawRoundedBorder(g, x + 16, cardY, w - 32, 32, withAlpha(accent, 72), 9);
+                drawText(g, font, fit(font, lines[i], w - 58), x + 28, cardY + 10,
+                        i == 0 ? TEXT : captionColor(), i == 0);
             }
             return;
         }
 
+        drawText(g, font, "OPTIONS", x + 20, y + 72, accentBright, true);
         String[] options = utilityOptions(activePage);
-        int rowY = y + 84;
+        int rowY = y + 91;
         for (int i = 0; i < options.length; i++) {
             String option = options[i];
-            int col = i % 2;
-            int row = i / 2;
-            int cellX = x + 20 + col * ((w - 52) / 2);
-            int cellY = rowY + row * 62;
-            int cellW = (w - 60) / 2;
-            fillRoundedGradient(g, cellX, cellY, cellW, 48,
-                    0xA8192B45, gradientPanels ? 0x88152A47 : 0xAA19304D, 10);
-            drawRoundedBorder(g, cellX, cellY, cellW, 48, withAlpha(accent, 80), 10);
-            drawText(g, font, fit(font, option, cellW - 64), cellX + 14, cellY + 17, TEXT, false);
-            drawSwitch(g, cellX + cellW - 52, cellY + 14, utilityValue(option));
+            int rowYPosition = rowY + i * 36;
+            fillRounded(g, x + 16, rowYPosition, w - 32, 31, 0x70192B45, 8);
+            drawRoundedBorder(g, x + 16, rowYPosition, w - 32, 31, withAlpha(accent, 55), 8);
+            drawCheck(g, x + 25, rowYPosition + 8, utilityValue(option));
+            drawText(g, font, fit(font, option, w - 78), x + 50, rowYPosition + 10, TEXT, false);
         }
-        drawText(g, font, "Appearance adjustments are local to this game session.", x + 18, y + l.contentH - 12, DIM, false);
+        drawText(g, font, "Changes apply to this interface for the current session.",
+                x + 18, y + l.contentH - 12, DIM, false);
+    }
+
+    private String[] utilityInfoRows(String page) {
+        return switch (page) {
+            case "Profiles" -> new String[]{"No saved visual profiles yet", "Profile presets are planned for a later update.", "Current appearance remains active for this game session."};
+            case "Configs" -> new String[]{"No configuration files loaded", "Import and export tools are planned for a later update.", "Atlas does not write config files in this build."};
+            default -> new String[]{"Atlas Client", "Fabric interface for Minecraft 1.21.11.", "Right Shift opens and closes this dashboard.", "Visual interface only; no gameplay modules."};
+        };
     }
 
     private String[] utilityOptions(String page) {
         return switch (page) {
-            case "Settings" -> new String[]{"Compact spacing", "Wide cards", "Quiet shadows"};
+            case "Settings" -> new String[]{"Compact spacing", "Wide cards", "Quiet shadows", "Gradient panels", "Glass overlay"};
             case "HUD" -> new String[]{"Show status chips", "Show coordinates", "Section counts"};
-            default -> new String[]{"Ambient glow", "Glass overlay", "Gradient panels"};
+            default -> new String[]{"Ambient glow", "Edge glow", "Focus highlight", "Gradient panels", "Glass overlay", "Quiet shadows"};
         };
     }
 
@@ -350,7 +366,14 @@ public final class AtlasScreen extends Screen {
             case "Quiet shadows" -> quietShadows;
             case "Gradient panels" -> gradientPanels;
             case "Ambient glow" -> ambientGlow;
+            case "Edge glow" -> edgeGlow;
+            case "Focus highlight" -> focusHighlight;
             case "Glass overlay" -> glassOverlay;
+            case "Soft edges" -> softEdges;
+            case "Compact labels" -> compactLabels;
+            case "Bright headings" -> brightHeadings;
+            case "Muted captions", "Reduced glare" -> mutedCaptions;
+            case "High contrast" -> highContrast;
             case "Section counts" -> sectionCounts;
             default -> pageToggles.getOrDefault(option, true);
         };
@@ -364,7 +387,14 @@ public final class AtlasScreen extends Screen {
             case "Quiet shadows" -> quietShadows = value;
             case "Gradient panels" -> gradientPanels = value;
             case "Ambient glow" -> ambientGlow = value;
+            case "Edge glow" -> edgeGlow = value;
+            case "Focus highlight" -> focusHighlight = value;
             case "Glass overlay" -> glassOverlay = value;
+            case "Soft edges" -> softEdges = value;
+            case "Compact labels" -> compactLabels = value;
+            case "Bright headings" -> brightHeadings = value;
+            case "Muted captions", "Reduced glare" -> mutedCaptions = value;
+            case "High contrast" -> highContrast = value;
             case "Section counts" -> sectionCounts = value;
             default -> pageToggles.put(option, value);
         }
@@ -666,21 +696,18 @@ public final class AtlasScreen extends Screen {
         if (inside(mouseX, mouseY, searchX, 18, searchW, 34)) return true;
 
         if (activePage.equals("Overview")) return super.mouseClicked(event, doubleClick);
-        {
-            if (!activePage.equals("Settings") && !activePage.equals("Visuals") && !activePage.equals("HUD")) {
-                return super.mouseClicked(event, doubleClick);
-            }
-            String[] options = utilityOptions(activePage);
-            int x = l.contentX;
-            int y = l.contentY;
-            int w = l.contentW + l.detailW + (l.detailW > 0 ? 14 : 0);
-            for (int index = 0; index < options.length; index++) {
-                int cellX = x + 20 + (index % 2) * ((w - 52) / 2);
-                int cellY = y + 84 + (index / 2) * 62;
-                if (inside(mouseX, mouseY, cellX, cellY, (w - 60) / 2, 48)) {
-                    toggleUtilityOption(options[index]);
-                    return true;
-                }
+        if (!activePage.equals("Settings") && !activePage.equals("Visuals") && !activePage.equals("HUD")) {
+            return super.mouseClicked(event, doubleClick);
+        }
+        String[] options = utilityOptions(activePage);
+        int x = l.contentX;
+        int y = l.contentY;
+        int w = l.contentW + l.detailW + (l.detailW > 0 ? 14 : 0);
+        for (int index = 0; index < options.length; index++) {
+            int rowY = y + 91 + index * 36;
+            if (inside(mouseX, mouseY, x + 16, rowY, w - 32, 31)) {
+                toggleUtilityOption(options[index]);
+                return true;
             }
         }
         return super.mouseClicked(event, doubleClick);
@@ -708,28 +735,25 @@ public final class AtlasScreen extends Screen {
             for (String group : GROUPS.keySet()) scrollByGroup.put(group, 0);
             return true;
         }
-        return super.charTyped(event);
+        return true;
     }
 
     @Override
     public boolean keyPressed(KeyEvent event) {
         int keyCode = event.key();
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-            onClose();
+            // Close on the next screen tick so Escape cannot also reach the game behind Atlas.
+            closeRequested = true;
             return true;
         }
         if (keyCode == GLFW.GLFW_KEY_BACKSPACE && !search.isEmpty()) {
             int lastCodePointStart = search.offsetByCodePoints(search.length(), -1);
             search = search.substring(0, lastCodePointStart);
-            for (String group : GROUPS.keySet()) scrollByGroup.put(group, 0);
-            return true;
-        }
-        if (keyCode == GLFW.GLFW_KEY_DELETE) {
+        } else if (keyCode == GLFW.GLFW_KEY_DELETE) {
             search = "";
-            for (String group : GROUPS.keySet()) scrollByGroup.put(group, 0);
-            return true;
         }
-        return super.keyPressed(event);
+        // Consume otherwise-unhandled keys instead of forwarding them to Minecraft key bindings.
+        return true;
     }
 
     @Override

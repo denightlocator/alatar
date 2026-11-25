@@ -5,15 +5,25 @@ title Atlas Client - Build mod jar
 
 echo.
 echo  Atlas Client - Minecraft 1.21.11
- echo -----------------------------------
+echo  -----------------------------------
 echo  Preparing Java 21 and building the mod...
 echo.
 
 set "JAVA_HOME="
-for /f "usebackq delims=" %%J in (`powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\ensure-java.ps1"`) do set "JAVA_HOME=%%J"
-if not defined JAVA_HOME (
+if exist "%~dp0.tools\java-home.txt" del /q "%~dp0.tools\java-home.txt"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\ensure-java.ps1"
+if errorlevel 1 (
     echo.
     echo Could not prepare Java 21. See the error above.
+    goto :failed
+)
+if not exist "%~dp0.tools\java-home.txt" (
+    echo The Java setup did not return a JDK path.
+    goto :failed
+)
+set /p "JAVA_HOME="<"%~dp0.tools\java-home.txt"
+if not defined JAVA_HOME (
+    echo The Java setup returned an empty JDK path.
     goto :failed
 )
 if not exist "%JAVA_HOME%\bin\java.exe" (
@@ -22,7 +32,7 @@ if not exist "%JAVA_HOME%\bin\java.exe" (
 )
 set "PATH=%JAVA_HOME%\bin;%PATH%"
 
-echo Using Java from: %JAVA_HOME%
+echo Using Java from: "%JAVA_HOME%"
 echo Gradle will download its build tools and dependencies if needed.
 echo.
 call "%~dp0gradlew.bat" --no-daemon clean build

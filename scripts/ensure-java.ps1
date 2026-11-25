@@ -2,6 +2,12 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
+function Save-JdkHome([string] $jdkHome) {
+    $toolsPath = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\.tools'))
+    New-Item -ItemType Directory -Force -Path $toolsPath | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $toolsPath 'java-home.txt'), $jdkHome)
+}
+
 function Test-Jdk21([string] $jdkHome) {
     if ([string]::IsNullOrWhiteSpace($jdkHome)) { return $false }
     $java = Join-Path $jdkHome 'bin\java.exe'
@@ -45,7 +51,7 @@ function Find-Jdk21 {
 
 $existing = Find-Jdk21
 if ($existing) {
-    [Console]::Out.WriteLine($existing)
+    Save-JdkHome $existing
     exit 0
 }
 
@@ -81,7 +87,7 @@ try {
     Move-Item -LiteralPath $jdkDirectory.FullName -Destination $installPath
     if (!(Test-Jdk21 $installPath)) { throw 'The downloaded JDK did not pass the Java 21 check.' }
 
-    [Console]::Out.WriteLine($installPath)
+    Save-JdkHome $installPath
     exit 0
 }
 catch {

@@ -78,7 +78,7 @@ public final class AtlasScreen extends Screen {
         drawHeader(graphics, font, layout);
         drawSidebar(graphics, font, layout, mouseX, mouseY);
         if (activePage.equals("Overview")) {
-            drawOverview(graphics, font, layout, mouseX, mouseY);
+            drawOverview(graphics, layout);
         } else {
             drawUtilityPage(graphics, font, layout);
         }
@@ -166,19 +166,10 @@ public final class AtlasScreen extends Screen {
         if (l.sidebarW >= 106) drawText(g, font, "build 1.0.0", 22, footerY + 14, DIM, false);
     }
 
-    private void drawOverview(GuiGraphics g, Font font, Layout l, int mouseX, int mouseY) {
-        int gap = 12;
-        int cardW = (l.contentW - gap * (l.columns - 1)) / l.columns;
-        int groupRows = (GROUPS.size() + l.columns - 1) / l.columns;
-        int cardH = (l.contentH - gap * (groupRows - 1)) / groupRows;
-        int groupIndex = 0;
-        for (Map.Entry<String, List<VisualOption>> group : GROUPS.entrySet()) {
-            int x = l.contentX + (groupIndex % l.columns) * (cardW + gap);
-            int y = l.contentY + (groupIndex / l.columns) * (cardH + gap);
-            drawVisualGroup(g, font, group.getKey(), visibleOptions(group.getValue()), x, y, cardW, cardH, mouseX, mouseY);
-            groupIndex++;
-        }
-        if (l.detailW > 0) drawDetails(g, font, l);
+    private void drawOverview(GuiGraphics g, Layout l) {
+        // Keep the dashboard's center as an intentionally empty module-list surface.
+        int listWidth = l.contentW + l.detailW + (l.detailW > 0 ? 14 : 0);
+        panel(g, l.contentX, l.contentY, listWidth, l.contentH, false);
     }
 
     private void drawVisualGroup(GuiGraphics g, Font font, String title, List<VisualOption> options,
@@ -642,50 +633,8 @@ public final class AtlasScreen extends Screen {
         int searchW = headerSearchWidth();
         if (inside(mouseX, mouseY, searchX, 18, searchW, 34)) return true;
 
-        if (activePage.equals("Overview")) {
-            if (l.detailW > 0) {
-                int x = l.detailX;
-                int y = l.contentY;
-                int w = l.detailW;
-                int activeY = y + 60 + 32;
-                if (inside(mouseX, mouseY, x + w - 54, activeY - 7, 48, 28)) {
-                    setVisualOption(selectedOption, !selectedOption.enabled);
-                    return true;
-                }
-                int sliderY = activeY + 72;
-                if (inside(mouseX, mouseY, x + 10, sliderY - 3, w - 20, 19)) {
-                    selectedOption.intensity = (int) Math.round(Math.max(0, Math.min(1, (mouseX - (x + 13)) / (w - 26.0))) * 100);
-                    return true;
-                }
-                int treatmentY = sliderY + 35;
-                if (inside(mouseX, mouseY, x + 10, treatmentY - 4, w - 20, 25)) {
-                    selectedOption.treatment = selectedOption.treatment.equals("Soft") ? "Crisp" : "Soft";
-                    return true;
-                }
-            }
-            int gap = 12;
-            int cardW = (l.contentW - gap * (l.columns - 1)) / l.columns;
-            int groupRows = (GROUPS.size() + l.columns - 1) / l.columns;
-            int cardH = (l.contentH - gap * (groupRows - 1)) / groupRows;
-            int rowHeight = compactSpacing || compactLabels ? 20 : 24;
-            int groupIndex = 0;
-            for (Map.Entry<String, List<VisualOption>> group : GROUPS.entrySet()) {
-                int x = l.contentX + (groupIndex % l.columns) * (cardW + gap);
-                int y = l.contentY + (groupIndex / l.columns) * (cardH + gap);
-                if (inside(mouseX, mouseY, x, y + 44, cardW, cardH - 45)) {
-                    List<VisualOption> options = visibleOptions(group.getValue());
-                    int rows = Math.max(0, (cardH - 52) / rowHeight);
-                    int clickedIndex = scrollByGroup.getOrDefault(group.getKey(), 0) + (int) ((mouseY - (y + 45)) / rowHeight);
-                    if (clickedIndex >= 0 && clickedIndex < options.size()
-                            && clickedIndex < scrollByGroup.getOrDefault(group.getKey(), 0) + rows) {
-                        selectedOption = options.get(clickedIndex);
-                        setVisualOption(selectedOption, selectedOption.palette || !selectedOption.enabled);
-                        return true;
-                    }
-                }
-                groupIndex++;
-            }
-        } else {
+        if (activePage.equals("Overview")) return super.mouseClicked(event, doubleClick);
+        {
             if (!activePage.equals("Settings") && !activePage.equals("Visuals") && !activePage.equals("HUD")) {
                 return super.mouseClicked(event, doubleClick);
             }
@@ -707,26 +656,6 @@ public final class AtlasScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        if (!activePage.equals("Overview")) return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
-        Layout l = layout();
-        int gap = 12;
-        int cardW = (l.contentW - gap * (l.columns - 1)) / l.columns;
-        int groupRows = (GROUPS.size() + l.columns - 1) / l.columns;
-        int cardH = (l.contentH - gap * (groupRows - 1)) / groupRows;
-        int groupIndex = 0;
-        int rowHeight = compactSpacing || compactLabels ? 20 : 24;
-        for (String group : GROUPS.keySet()) {
-            int x = l.contentX + (groupIndex % l.columns) * (cardW + gap);
-            int y = l.contentY + (groupIndex / l.columns) * (cardH + gap);
-            if (inside(mouseX, mouseY, x, y, cardW, cardH)) {
-                int rows = Math.max(0, (cardH - 52) / rowHeight);
-                int maxScroll = Math.max(0, visibleOptions(GROUPS.get(group)).size() - rows);
-                int current = scrollByGroup.getOrDefault(group, 0);
-                scrollByGroup.put(group, Math.max(0, Math.min(maxScroll, current - (int) Math.signum(verticalAmount) * 2)));
-                return true;
-            }
-            groupIndex++;
-        }
         return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 

@@ -13,7 +13,13 @@ function Test-Jdk21([string] $jdkHome) {
     $java = Join-Path $jdkHome 'bin\java.exe'
     $javac = Join-Path $jdkHome 'bin\javac.exe'
     if (!(Test-Path $java) -or !(Test-Path $javac)) { return $false }
-    $versionText = (& $java -version 2>&1 | Out-String)
+    try {
+        $versionText = (& $java -version 2>&1 | Out-String)
+    }
+    catch {
+        # Windows PowerShell 5 can treat java.exe's version output on stderr as a terminating error.
+        $versionText = $_.Exception.Message
+    }
     if ($versionText -match 'version\s+"(?<major>\d+)') {
         return ([int]$Matches.major -eq 21)
     }

@@ -21,6 +21,7 @@ set "ATLAS_ZIP=%ATLAS_WORK%\source.zip"
 set "ATLAS_STAGE=%ATLAS_WORK%\source-refresh"
 set "ATLAS_PROJECT_FILE=%ATLAS_WORK%\project-path.txt"
 if not exist "%ATLAS_WORK%" mkdir "%ATLAS_WORK%"
+if exist "%ATLAS_WORK%\path.txt" del /f /q "%ATLAS_WORK%\path.txt"
 
 rem Refresh the standalone project every time so cached files cannot hide fixes.
 rem Keep the locally installed JDK while replacing the downloaded source tree.
@@ -93,7 +94,12 @@ if errorlevel 1 (
 
 cd /d "%PROJECT_DIR%"
 echo.
-echo Removing the previous jar and performing a clean Gradle rebuild...
+echo Removing stale path and jar files before the clean rebuild...
+if exist "%PROJECT_DIR%path.txt" del /f /q "%PROJECT_DIR%path.txt"
+if exist "%PROJECT_DIR%path.txt" (
+    echo Could not remove "%PROJECT_DIR%path.txt". Close any program using it, then retry.
+    goto :failed
+)
 if exist "%PROJECT_DIR%dist\AtlasClient-1.0.0.jar" (
     del /f /q "%PROJECT_DIR%dist\AtlasClient-1.0.0.jar"
     if exist "%PROJECT_DIR%dist\AtlasClient-1.0.0.jar" (

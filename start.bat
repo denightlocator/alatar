@@ -56,14 +56,12 @@ if not exist "%PROJECT_DIR%scripts\ensure-java.ps1" (
     echo Missing Java bootstrap script: "%PROJECT_DIR%scripts\ensure-java.ps1"
     goto :failed
 )
-if "%STANDALONE%"=="1" (
-    echo Updating the Java setup helper...
-    set "ATLAS_PROJECT_DIR=%PROJECT_DIR%"
-    powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/denightlocator/alatar/arena/32825206-alatar/scripts/ensure-java.ps1' -OutFile (Join-Path $env:ATLAS_PROJECT_DIR 'scripts\ensure-java.ps1') -UseBasicParsing | Out-Null"
-    if errorlevel 1 (
-        echo Could not update the Java helper. Check your internet connection and try again.
-        goto :failed
-    )
+echo Updating the Java setup helper...
+set "ATLAS_PROJECT_DIR=%PROJECT_DIR%"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/denightlocator/alatar/arena/32825206-alatar/scripts/ensure-java.ps1' -OutFile (Join-Path $env:ATLAS_PROJECT_DIR 'scripts\ensure-java.ps1') -UseBasicParsing | Out-Null"
+if errorlevel 1 (
+    echo Could not update the Java helper. Check your internet connection and try again.
+    goto :failed
 )
 if not exist "%PROJECT_DIR%.tools" mkdir "%PROJECT_DIR%.tools"
 if exist "%PROJECT_DIR%.tools\java-home.txt" del /q "%PROJECT_DIR%.tools\java-home.txt"
@@ -90,9 +88,18 @@ if not exist "%JAVA_HOME%\bin\java.exe" (
 )
 set "PATH=%JAVA_HOME%\bin;%PATH%"
 
+echo.
+echo Selected build JDK: "%JAVA_HOME%"
+"%JAVA_HOME%\bin\java.exe" -version 2>&1 | findstr /R /C:"version.*25" >nul
+if errorlevel 1 (
+    echo This launcher requires Java 25, but the selected JDK is not Java 25:
+    "%JAVA_HOME%\bin\java.exe" -version 2>&1
+    goto :failed
+)
+"%JAVA_HOME%\bin\java.exe" -version 2>&1
+
 cd /d "%PROJECT_DIR%"
 echo.
-echo Using Java from: "%JAVA_HOME%"
 echo Building the Fabric mod. Gradle downloads build dependencies if needed.
 echo.
 call "%PROJECT_DIR%gradlew.bat" --no-daemon clean build

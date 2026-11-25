@@ -18,16 +18,15 @@ import java.util.Map;
 
 /** Atlas's client-only visual customization dashboard. */
 public final class AtlasScreen extends Screen {
-    private static final int PANEL = 0xEE0C1427;
-    private static final int TEXT = 0xFFE8F2FF;
-    private static final int MUTED = 0xFF8D9CB7;
-    private static final int DIM = 0xFF64728C;
-    private static final int DEFAULT_ACCENT = 0xFF55B8FF;
-    private static final int DEFAULT_BRIGHT = 0xFF83D4FF;
-    private static final int DEFAULT_DARK = 0xFF2462B1;
+    private static final int PANEL = 0xEE100813;
+    private static final int TEXT = 0xFFFFF0FB;
+    private static final int MUTED = 0xFFC7A6C6;
+    private static final int DIM = 0xFF80617E;
+    private static final int DEFAULT_ACCENT = 0xFFFF28C9;
+    private static final int DEFAULT_BRIGHT = 0xFFFF91E8;
+    private static final int DEFAULT_DARK = 0xFF970B68;
 
     private static final String[] NAV = {"Overview", "Settings", "Visuals", "HUD", "Profiles", "Configs", "About"};
-    private static final String[] NAV_GLYPHS = {"O", "S", "V", "H", "P", "C", "i"};
     private static final LinkedHashMap<String, List<VisualOption>> GROUPS = makeVisualGroups();
 
     private String activePage = "Overview";
@@ -71,7 +70,7 @@ public final class AtlasScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         Font font = Minecraft.getInstance().font;
-        graphics.fillGradient(0, 0, width, height, 0xF5090D19, 0xF5091022);
+        graphics.fillGradient(0, 0, width, height, 0xFF08050C, 0xFF130713);
         drawAmbient(graphics);
 
         Layout layout = layout();
@@ -86,17 +85,33 @@ public final class AtlasScreen extends Screen {
     }
 
     private void drawAmbient(GuiGraphics g) {
-        g.fillGradient(0, 0, width, 2, 0x004D9BFF, 0xD957BFFF);
+        g.fillGradient(0, 0, width, 2, withAlpha(accentBright, 0), withAlpha(accentBright, 230));
+        drawSlash(g, width * 2 / 3, height * 3 / 5, width / 2, height / 5, -width / 7,
+                withAlpha(accentDark, ambientGlow ? 36 : 16));
+        drawSlash(g, width * 4 / 5, -height / 8, width / 3, height / 2, -width / 5,
+                withAlpha(accent, ambientGlow ? 24 : 11));
         if (ambientGlow) {
-            int glowAlpha = Math.min(120, 28 + intensityOf("Ambient glow", 65));
-            g.fill(width - 2, 0, width, height, withAlpha(accent, glowAlpha));
-            g.fillGradient(Math.min(120, width), Math.max(0, height - 30), width, height,
-                    0x002B76D9, withAlpha(accentDark, glowAlpha / 2));
+            int glowAlpha = Math.min(105, 18 + intensityOf("Ambient glow", 65));
+            g.fillGradient(0, height - Math.max(80, height / 5), width, height,
+                    withAlpha(accentDark, 0), withAlpha(accentDark, glowAlpha));
+            g.fillGradient(width - 2, 0, width, height, withAlpha(accent, 0), withAlpha(accent, glowAlpha));
+        }
+    }
+
+    private void drawSlash(GuiGraphics g, int x, int y, int length, int thickness, int drift, int color) {
+        if (length <= 0 || thickness <= 0) return;
+        for (int row = 0; row < thickness; row += 3) {
+            int startX = x + drift * row / thickness;
+            int rowY = y + row;
+            if (rowY < 0 || rowY >= height) continue;
+            int left = Math.max(0, startX);
+            int right = Math.min(width, startX + length);
+            if (right > left) g.fill(left, rowY, right, Math.min(height, rowY + 3), color);
         }
     }
 
     private void drawHeader(GuiGraphics g, Font font, Layout l) {
-        g.fillGradient(0, 0, width, l.headerH, 0xF10A0E1B, 0xEA0B1222);
+        g.fillGradient(0, 0, width, l.headerH, 0xF10A060F, 0xEA100715);
         g.fill(0, l.headerH - 1, width, l.headerH, withAlpha(accent, 170));
         int logoX = l.sidebarW + 12;
         panel(g, logoX, 12, 36, 36, true);
@@ -109,7 +124,7 @@ public final class AtlasScreen extends Screen {
         int searchX = logoX + 250;
         if (searchX + searchW > width - 14) searchX = Math.max(logoX + 46, width - searchW - 14);
         panel(g, searchX, 15, searchW, 30, false);
-        g.drawString(font, ">", searchX + 10, 21, accentBright, true);
+        drawSearchIcon(g, searchX + 10, 22, accentBright);
         String query = search.isEmpty() ? "Search visual settings..." : search;
         g.drawString(font, fit(font, query, Math.max(16, searchW - 38)), searchX + 29, 24,
                 search.isEmpty() ? DIM : TEXT, false);
@@ -127,13 +142,13 @@ public final class AtlasScreen extends Screen {
                 g.fillGradient(15, rowY, l.sidebarW - 7, rowY + 31, withAlpha(accent, 203), withAlpha(accentDark, 178));
                 g.fill(15, rowY + 4, 17, rowY + 27, accentBright);
             } else if (inside(mouseX, mouseY, 15, rowY, l.sidebarW - 23, 31)) {
-                g.fill(15, rowY, l.sidebarW - 7, rowY + 31, 0x4A29446B);
+                g.fill(15, rowY, l.sidebarW - 7, rowY + 31, 0x4A6D1558);
             }
-            g.drawString(font, NAV_GLYPHS[i], 25, rowY + 10, active ? 0xFFFFFFFF : accent, true);
+            drawNavIcon(g, i, 24, rowY + 9, active ? 0xFFFFFFFF : accent);
             if (sidebarLabels && l.sidebarW >= 106) g.drawString(font, item, 43, rowY + 10, active ? TEXT : captionColor(), false);
         }
         int footerY = height - 57;
-        g.fill(17, footerY - 8, l.sidebarW - 16, footerY - 7, 0x66324B72);
+        g.fill(17, footerY - 8, l.sidebarW - 16, footerY - 7, 0x66512549);
         g.drawString(font, "ATLAS", 22, footerY, accentBright, true);
         if (l.sidebarW >= 106) g.drawString(font, "build 1.0.0", 22, footerY + 14, DIM, false);
     }
@@ -141,7 +156,8 @@ public final class AtlasScreen extends Screen {
     private void drawOverview(GuiGraphics g, Font font, Layout l, int mouseX, int mouseY) {
         int gap = 8;
         int cardW = (l.contentW - gap * (l.columns - 1)) / l.columns;
-        int cardH = (l.contentH - gap) / 2;
+        int groupRows = (GROUPS.size() + l.columns - 1) / l.columns;
+        int cardH = (l.contentH - gap * (groupRows - 1)) / groupRows;
         int groupIndex = 0;
         for (Map.Entry<String, List<VisualOption>> group : GROUPS.entrySet()) {
             int x = l.contentX + (groupIndex % l.columns) * (cardW + gap);
@@ -155,8 +171,8 @@ public final class AtlasScreen extends Screen {
     private void drawVisualGroup(GuiGraphics g, Font font, String title, List<VisualOption> options,
                                  int x, int y, int w, int h, int mouseX, int mouseY) {
         panel(g, x, y, w, h, false);
-        g.fillGradient(x + 1, y + 1, x + w - 1, y + 31, 0xB9202D46, 0x88202D46);
-        g.fill(x + 1, y + 31, x + w - 1, y + 32, 0x882D456A);
+        g.fillGradient(x + 1, y + 1, x + w - 1, y + 31, 0xB9221024, 0x88220F23);
+        g.fill(x + 1, y + 31, x + w - 1, y + 32, 0x885C1C4E);
         g.drawString(font, groupGlyph(title), x + 9, y + 11, accentBright, true);
         g.drawString(font, fit(font, title, Math.max(24, w - 44)), x + 25, y + 11, headingColor(), true);
         if (sectionCounts) g.drawString(font, Integer.toString(options.size()), x + w - 20, y + 11, DIM, false);
@@ -174,7 +190,7 @@ public final class AtlasScreen extends Screen {
             int rowY = y + 39 + i * rowHeight;
             boolean hover = hoverFeedback && inside(mouseX, mouseY, x + 5, rowY - 3, w - 10, rowHeight);
             if (focusHighlight && option == selectedOption) g.fill(x + 5, rowY - 3, x + w - 5, rowY + rowHeight - 1, withAlpha(accent, 20 + selectedOption.intensity));
-            else if (hover) g.fill(x + 5, rowY - 3, x + w - 5, rowY + rowHeight - 1, 0x322A4264);
+            else if (hover) g.fill(x + 5, rowY - 3, x + w - 5, rowY + rowHeight - 1, withAlpha(accent, 38));
             drawCheck(g, x + 10, rowY + 2, option.enabled);
             int labelX = x + 27;
             int labelWidth = Math.max(16, w - 39);
@@ -185,13 +201,13 @@ public final class AtlasScreen extends Screen {
                 labelWidth = Math.max(16, w - 56);
             }
             g.drawString(font, fit(font, option.name, labelWidth), labelX, rowY + 3,
-                    option == selectedOption ? TEXT : (option.enabled ? 0xFFBEDCFA : (highContrast ? TEXT : captionColor())), false);
+                    option == selectedOption ? TEXT : (option.enabled ? 0xFFFFD9F1 : (highContrast ? TEXT : captionColor())), false);
         }
         if (options.size() > rows && rows > 0) {
             int trackX = x + w - 5;
             int trackY = y + 38;
             int trackH = Math.max(10, h - 47);
-            g.fill(trackX, trackY, trackX + 2, trackY + trackH, 0x66304768);
+            g.fill(trackX, trackY, trackX + 2, trackY + trackH, 0x66431A3D);
             int thumbH = Math.max(13, trackH * rows / options.size());
             int thumbY = trackY + (trackH - thumbH) * scroll / Math.max(1, maxScroll);
             g.fillGradient(trackX, thumbY, trackX + 2, thumbY + thumbH, accentBright, accentDark);
@@ -204,7 +220,7 @@ public final class AtlasScreen extends Screen {
         int w = l.detailW;
         int h = l.contentH;
         panel(g, x, y, w, h, true);
-        g.fillGradient(x + 1, y + 1, x + w - 1, y + 36, 0xD81B2A43, 0xA8152034);
+        g.fillGradient(x + 1, y + 1, x + w - 1, y + 36, 0xD8200D20, 0xA8160B19);
         g.drawString(font, "APPEARANCE", x + 13, y + 9, accentBright, true);
         g.drawString(font, fit(font, selectedOption.name, w - 24), x + 13, y + 22, headingColor(), true);
         int cursorY = y + 51;
@@ -213,7 +229,7 @@ public final class AtlasScreen extends Screen {
         g.drawString(font, "Active", x + 13, cursorY + 3, TEXT, false);
         drawSwitch(g, x + w - 48, cursorY - 2, selectedOption.enabled);
         cursorY += 35;
-        g.fill(x + 12, cursorY, x + w - 12, cursorY + 1, 0x66354D70);
+        g.fill(x + 12, cursorY, x + w - 12, cursorY + 1, 0x66522248);
         cursorY += 14;
         g.drawString(font, "Intensity", x + 13, cursorY, TEXT, false);
         g.drawString(font, selectedOption.intensity + "%", x + w - 42, cursorY, captionColor(), false);
@@ -224,9 +240,9 @@ public final class AtlasScreen extends Screen {
         cursorY += 32;
         int noteH = Math.max(42, Math.min(68, h - (cursorY - y) - 58));
         if (selectedOption.treatment.equals("Soft")) {
-            g.fillGradient(x + 11, cursorY, x + w - 11, cursorY + noteH, withAlpha(accent, 58), 0x7017243B);
+            g.fillGradient(x + 11, cursorY, x + w - 11, cursorY + noteH, withAlpha(accent, 58), 0x7030142C);
         } else {
-            g.fill(x + 11, cursorY, x + w - 11, cursorY + noteH, 0xB017243B);
+            g.fill(x + 11, cursorY, x + w - 11, cursorY + noteH, 0xB01B0C19);
         }
         g.drawString(font, "STYLE NOTE", x + 20, cursorY + 8, accentBright, true);
         drawWrapped(g, font, selectedOption.description, x + 20, cursorY + 22, w - 42, noteH - 24, captionColor());
@@ -248,7 +264,7 @@ public final class AtlasScreen extends Screen {
         };
         g.drawString(font, activePage.toUpperCase(Locale.ROOT), x + 18, y + 18, accentBright, true);
         g.drawString(font, subtitle, x + 18, y + 36, captionColor(), false);
-        g.fill(x + 18, y + 57, x + w - 18, y + 58, 0x66354D70);
+        g.fill(x + 18, y + 57, x + w - 18, y + 58, 0x66522248);
 
         if (activePage.equals("Profiles") || activePage.equals("Configs") || activePage.equals("About")) {
             String[] lines = activePage.equals("About")
@@ -272,7 +288,7 @@ public final class AtlasScreen extends Screen {
             int cellY = rowY + row * 55;
             int cellW = (w - 54) / 2;
             g.fillGradient(cellX, cellY, cellX + cellW, cellY + 42,
-                    0xA8172439, gradientPanels ? 0x88111B2D : 0xAA172439);
+                    0xA81D0D1A, gradientPanels ? 0x881A0D19 : 0xAA1D0D1A);
             g.drawString(font, fit(font, option, cellW - 55), cellX + 11, cellY + 15, TEXT, false);
             drawSwitch(g, cellX + cellW - 42, cellY + 10, utilityValue(option));
         }
@@ -356,26 +372,86 @@ public final class AtlasScreen extends Screen {
         }
     }
 
+    private void drawSearchIcon(GuiGraphics g, int x, int y, int color) {
+        g.fill(x + 1, y, x + 7, y + 1, color);
+        g.fill(x, y + 1, x + 1, y + 7, color);
+        g.fill(x + 7, y + 1, x + 8, y + 6, color);
+        g.fill(x + 1, y + 7, x + 6, y + 8, color);
+        g.fill(x + 2, y + 2, x + 6, y + 6, 0xFF100813);
+        g.fill(x + 7, y + 7, x + 11, y + 9, color);
+    }
+
+    private void drawNavIcon(GuiGraphics g, int index, int x, int y, int color) {
+        switch (index) {
+            case 0 -> {
+                g.fill(x, y, x + 5, y + 5, color);
+                g.fill(x + 7, y, x + 12, y + 5, color);
+                g.fill(x, y + 7, x + 5, y + 12, color);
+                g.fill(x + 7, y + 7, x + 12, y + 12, color);
+            }
+            case 1 -> {
+                g.fill(x + 4, y, x + 8, y + 12, color);
+                g.fill(x, y + 4, x + 12, y + 8, color);
+                g.fill(x + 2, y + 2, x + 10, y + 10, withAlpha(color, 190));
+                g.fill(x + 5, y + 5, x + 7, y + 7, 0xFF130713);
+            }
+            case 2 -> {
+                g.fill(x + 1, y + 5, x + 11, y + 7, color);
+                g.fill(x + 3, y + 3, x + 9, y + 9, color);
+                g.fill(x + 5, y + 5, x + 7, y + 7, 0xFF130713);
+            }
+            case 3 -> {
+                g.fill(x, y + 7, x + 3, y + 12, color);
+                g.fill(x + 5, y + 4, x + 8, y + 12, color);
+                g.fill(x + 10, y, x + 13, y + 12, color);
+            }
+            case 4 -> {
+                g.fill(x + 4, y, x + 9, y + 5, color);
+                g.fill(x + 2, y + 6, x + 11, y + 12, color);
+            }
+            case 5 -> {
+                g.fill(x + 1, y + 1, x + 12, y + 3, color);
+                g.fill(x + 1, y + 5, x + 10, y + 7, color);
+                g.fill(x + 1, y + 9, x + 12, y + 11, color);
+            }
+            default -> {
+                g.fill(x + 1, y + 1, x + 12, y + 12, color);
+                g.fill(x + 3, y + 3, x + 10, y + 10, 0xFF130713);
+                g.fill(x + 6, y + 5, x + 8, y + 9, color);
+                g.fill(x + 6, y + 3, x + 8, y + 4, color);
+            }
+        }
+    }
+
     private void drawCheck(GuiGraphics g, int x, int y, boolean checked) {
-        g.fill(x, y, x + 13, y + 13, checked ? accent : 0xFF101A2B);
-        g.fill(x, y, x + 13, y + 1, checked ? accentBright : 0xFF43506A);
+        g.fill(x, y, x + 13, y + 13, checked ? accent : 0xFF160C1A);
+        g.fill(x, y, x + 13, y + 1, checked ? accentBright : 0xFF684A65);
         if (checked) {
             g.fill(x + 3, y + 6, x + 5, y + 9, 0xFFFFFFFF);
             g.fill(x + 5, y + 8, x + 10, y + 10, 0xFFFFFFFF);
         } else {
-            g.fill(x, y + 12, x + 13, y + 13, 0xFF31415A);
+            g.fill(x, y + 12, x + 13, y + 13, 0xFF39253A);
         }
     }
 
     private void drawSwitch(GuiGraphics g, int x, int y, boolean on) {
-        g.fillGradient(x, y, x + 39, y + 20, on ? accent : 0xFF263348, on ? accentDark : 0xFF1A2638);
+        fillRounded(g, x, y, 39, 20, on ? accent : 0xFF321B30, 10);
         int knobX = on ? x + 22 : x + 3;
-        g.fill(knobX, y + 3, knobX + 14, y + 17, 0xFFF1F7FF);
-        g.fill(knobX + 2, y + 4, knobX + 12, y + 5, 0x66FFFFFF);
+        fillRounded(g, knobX, y + 3, 14, 14, 0xFFFFF7FD, 7);
+        g.fill(knobX + 3, y + 4, knobX + 11, y + 5, 0x66FFFFFF);
+    }
+
+    private static void fillRounded(GuiGraphics g, int x, int y, int w, int h, int color, int radius) {
+        int r = Math.max(0, Math.min(radius, Math.min(w, h) / 2));
+        for (int row = 0; row < h; row++) {
+            int edgeDistance = row < r ? r - row - 1 : row >= h - r ? row - (h - r) : -1;
+            int inset = edgeDistance < 0 ? 0 : r - (int) Math.sqrt(r * r - edgeDistance * edgeDistance);
+            g.fill(x + inset, y + row, x + w - inset, y + row + 1, color);
+        }
     }
 
     private void drawSlider(GuiGraphics g, int x, int y, int w, double amount) {
-        g.fill(x, y + 4, x + w, y + 7, 0xFF23314A);
+        g.fill(x, y + 4, x + w, y + 7, 0xFF40203A);
         int fillW = Math.max(0, Math.min(w, (int) (w * amount)));
         g.fillGradient(x, y + 4, x + fillW, y + 7, accentBright, accentDark);
         int knobX = x + fillW - 4;
@@ -384,14 +460,21 @@ public final class AtlasScreen extends Screen {
 
     private void panel(GuiGraphics g, int x, int y, int w, int h, boolean accentPanel) {
         if (w <= 0 || h <= 0) return;
+        if (edgeGlow) {
+            int aura = withAlpha(accent, accentPanel ? 30 : 18);
+            g.fill(x - 1, y - 1, x + w + 1, y, aura);
+            g.fill(x - 1, y + h, x + w + 1, y + h + 1, aura);
+            g.fill(x - 1, y, x, y + h, aura);
+            g.fill(x + w, y, x + w + 1, y + h, aura);
+        }
         if (quietShadows) g.fill(x + 2, y + 3, x + w + 2, y + h + 3, 0x50000000);
-        int surface = accentPanel ? (glassOverlay ? 0xC8111D32 : 0xF1111D32) : (glassOverlay ? 0xC80C1427 : PANEL);
-        int surfaceBottom = glassOverlay ? 0xA00A1020 : 0xF00A1020;
+        int surface = accentPanel ? (glassOverlay ? 0xC8120818 : 0xF1110715) : (glassOverlay ? 0xC80D0710 : PANEL);
+        int surfaceBottom = glassOverlay ? 0xA009050D : 0xF009050D;
         if (gradientPanels) g.fillGradient(x, y, x + w, y + h, surface, surfaceBottom);
         else g.fill(x, y, x + w, y + h, surface);
-        int edgeAlpha = Math.min(225, 28 + intensityOf("Edge glow", 65) * 2);
-        int border = accentPanel || edgeGlow ? withAlpha(accent, accentPanel ? 225 : edgeAlpha) : 0x8830476C;
-        if (softEdges) border = withAlpha(border, 166);
+        int edgeAlpha = Math.min(235, 52 + intensityOf("Edge glow", 65) * 3);
+        int border = accentPanel || edgeGlow ? withAlpha(accent, accentPanel ? 235 : edgeAlpha) : 0x88613A58;
+        if (softEdges) border = withAlpha(border, 205);
         g.fill(x, y, x + w, y + 1, border);
         g.fill(x, y + h - 1, x + w, y + h, withAlpha(accentDark, softEdges ? 145 : 205));
         g.fill(x, y + 1, x + 1, y + h - 1, border);
@@ -436,7 +519,10 @@ public final class AtlasScreen extends Screen {
         int contentX = side + 13;
         int rightMargin = 13;
         int contentW = Math.max(54, width - contentX - rightMargin - detailW - detailGap);
-        int columns = contentW >= 600 ? (wideCards ? 3 : 4) : contentW >= 410 ? (wideCards ? 2 : 3) : contentW >= 250 ? 2 : 1;
+        int columns = contentW >= 840 ? (wideCards ? 4 : 6)
+                : contentW >= 600 ? (wideCards ? 3 : 4)
+                : contentW >= 410 ? (wideCards ? 2 : 3)
+                : contentW >= 250 ? 2 : 1;
         int contentH = Math.max(84, bottom - top);
         int detailX = width - rightMargin - detailW;
         return new Layout(side, header, contentX, top, contentW, contentH, columns, detailX, detailW);
@@ -486,7 +572,8 @@ public final class AtlasScreen extends Screen {
             }
             int gap = 8;
             int cardW = (l.contentW - gap * (l.columns - 1)) / l.columns;
-            int cardH = (l.contentH - gap) / 2;
+            int groupRows = (GROUPS.size() + l.columns - 1) / l.columns;
+            int cardH = (l.contentH - gap * (groupRows - 1)) / groupRows;
             int rowHeight = compactSpacing || compactLabels ? 18 : 21;
             int groupIndex = 0;
             for (Map.Entry<String, List<VisualOption>> group : GROUPS.entrySet()) {
@@ -531,7 +618,8 @@ public final class AtlasScreen extends Screen {
         Layout l = layout();
         int gap = 8;
         int cardW = (l.contentW - gap * (l.columns - 1)) / l.columns;
-        int cardH = (l.contentH - gap) / 2;
+        int groupRows = (GROUPS.size() + l.columns - 1) / l.columns;
+        int cardH = (l.contentH - gap * (groupRows - 1)) / groupRows;
         int groupIndex = 0;
         int rowHeight = compactSpacing || compactLabels ? 18 : 21;
         for (String group : GROUPS.keySet()) {
@@ -610,10 +698,10 @@ public final class AtlasScreen extends Screen {
     private static LinkedHashMap<String, List<VisualOption>> makeVisualGroups() {
         LinkedHashMap<String, List<VisualOption>> groups = new LinkedHashMap<>();
         List<VisualOption> palettes = new ArrayList<>();
-        palettes.add(VisualOption.palette("Ocean blue", "Deep navy panels with cool cyan highlights.", DEFAULT_ACCENT, DEFAULT_BRIGHT, DEFAULT_DARK, true));
-        palettes.add(VisualOption.palette("Glacier", "Icy blue surfaces with bright frosted accents.", 0xFF6ED9F5, 0xFFB3F0FF, 0xFF3285B8, false));
-        palettes.add(VisualOption.palette("Indigo", "A deeper violet-blue accent with a calm glow.", 0xFF7989FF, 0xFFB5BEFF, 0xFF3E4EB7, false));
-        palettes.add(VisualOption.palette("Sapphire", "Saturated royal blue with a crisp highlight.", 0xFF3986FF, 0xFF8EB8FF, 0xFF214DAB, false));
+        palettes.add(VisualOption.palette("Neon rose", "Black-plum panels with vivid fuchsia neon accents.", DEFAULT_ACCENT, DEFAULT_BRIGHT, DEFAULT_DARK, true));
+        palettes.add(VisualOption.palette("Violet pulse", "Deep violet surfaces with a soft ultraviolet glow.", 0xFFB85AFF, 0xFFE5A4FF, 0xFF6E27A8, false));
+        palettes.add(VisualOption.palette("Orchid", "Saturated orchid pink with warm rose highlights.", 0xFFFF4EAA, 0xFFFFA0D2, 0xFF9B1D67, false));
+        palettes.add(VisualOption.palette("Ocean blue", "A cool blue accent for a calmer interface.", 0xFF3986FF, 0xFF8EB8FF, 0xFF214DAB, false));
         groups.put("Palette", palettes);
         groups.put("Surfaces", options("Surfaces",
                 "Gradient panels", "Glass overlay", "Soft edges", "Quiet shadows"));

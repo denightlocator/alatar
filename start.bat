@@ -93,9 +93,18 @@ if errorlevel 1 (
 
 cd /d "%PROJECT_DIR%"
 echo.
-echo Building the Fabric mod. Gradle downloads build dependencies if needed.
+echo Removing the previous jar and performing a clean Gradle rebuild...
+if exist "%PROJECT_DIR%dist\AtlasClient-1.0.0.jar" (
+    del /f /q "%PROJECT_DIR%dist\AtlasClient-1.0.0.jar"
+    if exist "%PROJECT_DIR%dist\AtlasClient-1.0.0.jar" (
+        echo Could not remove the previous jar. Close Minecraft or any program using it, then retry.
+        goto :failed
+    )
+)
 echo.
-call "%PROJECT_DIR%gradlew.bat" --no-daemon clean build
+echo Gradle will delete the build output and rebuild every required task.
+echo.
+call "%PROJECT_DIR%gradlew.bat" --no-daemon --no-configuration-cache clean build
 if errorlevel 1 (
     echo.
     echo Build failed. The Gradle output above should show the cause.

@@ -9,6 +9,8 @@ import org.lwjgl.glfw.GLFW;
 /** Client entrypoint. The menu key is handled on a press edge so it cannot repeat while held. */
 public final class AtlasClient implements ClientModInitializer {
     private boolean rightShiftWasDown;
+    private long lastMenuToggleMillis;
+    private static final long TOGGLE_DEBOUNCE_MILLIS = 350;
 
     @Override
     public void onInitializeClient() {
@@ -18,13 +20,16 @@ public final class AtlasClient implements ClientModInitializer {
     private void onClientTick(Minecraft client) {
         long window = client.getWindow().handle();
         boolean rightShiftDown = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS;
-        if (rightShiftDown && !rightShiftWasDown) {
+        boolean pressedThisTick = rightShiftDown && !rightShiftWasDown;
+        rightShiftWasDown = rightShiftDown;
+        long now = System.currentTimeMillis();
+        if (pressedThisTick && now - lastMenuToggleMillis >= TOGGLE_DEBOUNCE_MILLIS) {
+            lastMenuToggleMillis = now;
             if (client.screen instanceof AtlasScreen) {
                 client.setScreen(null);
             } else if (client.screen == null) {
                 client.setScreen(new AtlasScreen());
             }
         }
-        rightShiftWasDown = rightShiftDown;
     }
 }

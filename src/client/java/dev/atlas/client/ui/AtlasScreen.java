@@ -8,9 +8,7 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FontDescription;
 import net.minecraft.network.chat.Style;
-import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -28,7 +26,6 @@ public final class AtlasScreen extends Screen {
     private static final int DEFAULT_ACCENT = 0xFF4CA8FF;
     private static final int DEFAULT_BRIGHT = 0xFF9BE1FF;
     private static final int DEFAULT_DARK = 0xFF1D58A2;
-    private static final FontDescription UI_FONT = new FontDescription.Resource(Identifier.fromNamespaceAndPath("atlas", "ui"));
 
     private static final String[] NAV = {"Overview", "Settings", "Visuals", "HUD", "Profiles", "Configs", "About"};
     private static final LinkedHashMap<String, List<VisualOption>> GROUPS = makeVisualGroups();
@@ -393,7 +390,8 @@ public final class AtlasScreen extends Screen {
     }
 
     private static Component uiText(String value, boolean emphasize) {
-        return Component.literal(value).withStyle(Style.EMPTY.withFont(UI_FONT).withBold(emphasize));
+        // Use Minecraft's bundled font for readable fallback glyphs on every client.
+        return Component.literal(value).withStyle(Style.EMPTY.withBold(emphasize));
     }
 
     private static void drawText(GuiGraphics graphics, Font font, String value, int x, int y, int color, boolean shadow) {

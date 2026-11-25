@@ -18,16 +18,14 @@ echo This is the standalone launcher. Preparing the full project source...
 set "ATLAS_WORK=%USERPROFILE%\AtlasClientBuild"
 set "ATLAS_SOURCE=%ATLAS_WORK%\source"
 set "ATLAS_ZIP=%ATLAS_WORK%\source.zip"
+set "ATLAS_STAGE=%ATLAS_WORK%\source-refresh"
 set "ATLAS_PROJECT_FILE=%ATLAS_WORK%\project-path.txt"
 if not exist "%ATLAS_WORK%" mkdir "%ATLAS_WORK%"
 
-if exist "%ATLAS_PROJECT_FILE%" (
-    set /p "PROJECT_DIR="<"%ATLAS_PROJECT_FILE%"
-    call :check_cached_project
-    if not errorlevel 1 goto :project_ready
-)
+rem Refresh the standalone project every time so cached files cannot hide fixes.
+rem Keep the locally installed JDK while replacing the downloaded source tree.
 if exist "%ATLAS_PROJECT_FILE%" del /q "%ATLAS_PROJECT_FILE%"
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $root=$env:ATLAS_SOURCE; if(Test-Path $root){Remove-Item -LiteralPath $root -Recurse -Force}; Invoke-WebRequest -Uri 'https://github.com/denightlocator/alatar/archive/refs/heads/arena/32825206-alatar.zip' -OutFile $env:ATLAS_ZIP -UseBasicParsing | Out-Null; Expand-Archive -LiteralPath $env:ATLAS_ZIP -DestinationPath $root -Force | Out-Null; $f=Get-ChildItem -LiteralPath $root -Filter 'build.gradle' -File -Recurse | Where-Object { Test-Path (Join-Path $_.DirectoryName 'gradlew.bat') } | Select-Object -First 1; if(!$f){throw 'Could not find the Atlas Gradle project in the downloaded source.'}; [System.IO.File]::WriteAllText($env:ATLAS_PROJECT_FILE,$f.DirectoryName)"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $root=$env:ATLAS_SOURCE; $stage=$env:ATLAS_STAGE; if(Test-Path $stage){Remove-Item -LiteralPath $stage -Recurse -Force}; Invoke-WebRequest -Uri 'https://github.com/denightlocator/alatar/archive/refs/heads/arena/32825206-alatar.zip' -OutFile $env:ATLAS_ZIP -UseBasicParsing | Out-Null; Expand-Archive -LiteralPath $env:ATLAS_ZIP -DestinationPath $stage -Force | Out-Null; $f=Get-ChildItem -LiteralPath $stage -Filter 'build.gradle' -File -Recurse | Where-Object { Test-Path (Join-Path $_.DirectoryName 'gradlew.bat') } | Select-Object -First 1; if(!$f){throw 'Could not find the Atlas Gradle project in the downloaded source.'}; $newProject=$f.DirectoryName; $tools=Join-Path $root '.tools'; if((Test-Path $tools) -and !(Test-Path (Join-Path $newProject '.tools'))){Copy-Item -LiteralPath $tools -Destination (Join-Path $newProject '.tools') -Recurse -Force}; if(Test-Path $root){Remove-Item -LiteralPath $root -Recurse -Force}; Move-Item -LiteralPath $newProject -Destination $root; Remove-Item -LiteralPath $stage -Recurse -Force; [System.IO.File]::WriteAllText($env:ATLAS_PROJECT_FILE,$root)"
 if errorlevel 1 (
     echo.
     echo Could not download the source. Check your internet connection and try again.
@@ -44,11 +42,6 @@ if not defined PROJECT_DIR (
 )
 
 goto :project_ready
-
-:check_cached_project
-if not exist "%PROJECT_DIR%\build.gradle" exit /b 1
-if not exist "%PROJECT_DIR%\gradlew.bat" exit /b 1
-exit /b 0
 
 :project_ready
 if not "%PROJECT_DIR:~-1%"=="\" set "PROJECT_DIR=%PROJECT_DIR%\"

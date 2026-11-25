@@ -16,7 +16,7 @@ public final class AtlasClient implements ClientModInitializer {
     }
 
     private void onClientTick(Minecraft client) {
-        long window = client.getWindow().getWindow();
+        long window = client.getWindow().handle();
         boolean rightShiftDown = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS;
         if (rightShiftDown && !rightShiftWasDown) {
             if (client.screen instanceof AtlasScreen) {

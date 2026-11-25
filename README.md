@@ -6,9 +6,8 @@ A client-only Fabric visual-customization interface for **Minecraft 1.21.11**, s
 
 - Press **Right Shift** to open or close Atlas; Escape closes it.
 - Use the sidebar to move between Overview, Settings, Visuals, HUD, Profiles, Configs, and About.
-- The Overview contains appearance groups for palettes, surfaces, lighting, typography, layout, and visual feedback. Controls change only the dashboard’s appearance.
-- Type to search visual settings. Backspace edits the query and Delete clears it.
-- Click an appearance option to select or toggle it. Scroll over a group to browse its options. The detail panel includes intensity and treatment controls.
+- The Overview's center intentionally contains no module rows. Scroll over it to smoothly move between the empty category panes for palettes, surfaces, lighting, typography, layout, and feedback.
+- Settings, Visuals, and HUD pages contain interface-only toggles; no gameplay modules are included.
 
 ## Build
 

@@ -29,9 +29,13 @@ public final class AtlasScreen extends Screen {
 
     private static final String[] NAV = {"Overview", "Settings", "Visuals", "HUD", "Profiles", "Configs", "About"};
     private static final LinkedHashMap<String, List<VisualOption>> GROUPS = makeVisualGroups();
+    private static final String[] CATEGORY_NAMES = GROUPS.keySet().toArray(String[]::new);
 
     private String activePage = "Overview";
     private String search = "";
+    private double categoryScrollTarget;
+    private double categoryScrollPosition;
+    private long lastCategoryAnimationNanos;
     private VisualOption selectedOption = GROUPS.get("Palette").get(0);
     private final Map<String, Integer> scrollByGroup = new LinkedHashMap<>();
     private final Map<String, Boolean> pageToggles = new LinkedHashMap<>();
@@ -78,7 +82,7 @@ public final class AtlasScreen extends Screen {
         drawHeader(graphics, font, layout);
         drawSidebar(graphics, font, layout, mouseX, mouseY);
         if (activePage.equals("Overview")) {
-            drawOverview(graphics, layout);
+            drawOverview(graphics, font, layout, animateCategoryScroll());
         } else {
             drawUtilityPage(graphics, font, layout);
         }
@@ -166,10 +170,38 @@ public final class AtlasScreen extends Screen {
         if (l.sidebarW >= 106) drawText(g, font, "build 1.0.0", 22, footerY + 14, DIM, false);
     }
 
-    private void drawOverview(GuiGraphics g, Layout l) {
-        // Keep the dashboard's center as an intentionally empty module-list surface.
+    private double animateCategoryScroll() {
+        long now = System.nanoTime();
+        if (lastCategoryAnimationNanos == 0) lastCategoryAnimationNanos = now;
+        double deltaSeconds = Math.min(0.05, (now - lastCategoryAnimationNanos) / 1_000_000_000.0);
+        lastCategoryAnimationNanos = now;
+        double easing = 1.0 - Math.exp(-deltaSeconds / 0.12);
+        categoryScrollPosition += (categoryScrollTarget - categoryScrollPosition) * easing;
+        if (Math.abs(categoryScrollTarget - categoryScrollPosition) < 0.001) {
+            categoryScrollPosition = categoryScrollTarget;
+        }
+        return categoryScrollPosition;
+    }
+
+    private void drawOverview(GuiGraphics g, Font font, Layout l, double scrollPosition) {
+        // The category panes remain intentionally empty; scrolling over them switches categories.
         int listWidth = l.contentW + l.detailW + (l.detailW > 0 ? 14 : 0);
-        panel(g, l.contentX, l.contentY, listWidth, l.contentH, false);
+        int first = Math.max(0, (int) Math.floor(scrollPosition));
+        int last = Math.min(CATEGORY_NAMES.length - 1, (int) Math.ceil(scrollPosition));
+        g.enableScissor(l.contentX, l.contentY, l.contentX + listWidth, l.contentY + l.contentH);
+        for (int index = first; index <= last; index++) {
+            int y = l.contentY + (int) Math.round((index - scrollPosition) * l.contentH);
+            drawEmptyCategory(g, font, CATEGORY_NAMES[index], l.contentX, y, listWidth, l.contentH);
+        }
+        g.disableScissor();
+    }
+
+    private void drawEmptyCategory(GuiGraphics g, Font font, String category, int x, int y, int w, int h) {
+        panel(g, x, y, w, h, false);
+        fillRoundedTopGradient(g, x + 1, y + 1, w - 2, 42, 0xB9233A5D, 0x88213A5E, 10);
+        g.fill(x + 14, y + 42, x + w - 14, y + 43, withAlpha(accent, 82));
+        drawText(g, font, groupGlyph(category), x + 17, y + 14, accentBright, true);
+        drawText(g, font, category, x + 38, y + 14, headingColor(), true);
     }
 
     private void drawVisualGroup(GuiGraphics g, Font font, String title, List<VisualOption> options,
@@ -656,6 +688,15 @@ public final class AtlasScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (activePage.equals("Overview") && verticalAmount != 0) {
+            Layout l = layout();
+            int listWidth = l.contentW + l.detailW + (l.detailW > 0 ? 14 : 0);
+            if (inside(mouseX, mouseY, l.contentX, l.contentY, listWidth, l.contentH)) {
+                categoryScrollTarget = Math.max(0, Math.min(CATEGORY_NAMES.length - 1,
+                        categoryScrollTarget - verticalAmount));
+                return true;
+            }
+        }
         return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 

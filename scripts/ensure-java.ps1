@@ -8,7 +8,7 @@ function Save-JdkHome([string] $jdkHome) {
     [System.IO.File]::WriteAllText((Join-Path $toolsPath 'java-home.txt'), $jdkHome)
 }
 
-function Test-Jdk21([string] $jdkHome) {
+function Test-Jdk25([string] $jdkHome) {
     if ([string]::IsNullOrWhiteSpace($jdkHome)) { return $false }
     $java = Join-Path $jdkHome 'bin\java.exe'
     $javac = Join-Path $jdkHome 'bin\javac.exe'
@@ -21,15 +21,15 @@ function Test-Jdk21([string] $jdkHome) {
         $versionText = $_.Exception.Message
     }
     if ($versionText -match 'version\s+"(?<major>\d+)') {
-        return ([int]$Matches.major -eq 21)
+        return ([int]$Matches.major -eq 25)
     }
     return $false
 }
 
-function Find-Jdk21 {
+function Find-Jdk25 {
     $candidates = [System.Collections.Generic.List[string]]::new()
     if ($env:JAVA_HOME) { $candidates.Add($env:JAVA_HOME) }
-    $localJdk = Join-Path $PSScriptRoot '..\.tools\jdk21'
+    $localJdk = Join-Path $PSScriptRoot '..\.tools\jdk25'
     $candidates.Add([System.IO.Path]::GetFullPath($localJdk))
 
     $javaCommand = Get-Command java.exe -ErrorAction SilentlyContinue
@@ -39,7 +39,7 @@ function Find-Jdk21 {
 
     foreach ($programRoot in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
         if ([string]::IsNullOrWhiteSpace($programRoot)) { continue }
-        foreach ($pattern in @('Eclipse Adoptium\jdk-21*', 'Java\jdk-21*')) {
+        foreach ($pattern in @('Eclipse Adoptium\jdk-25*', 'Java\jdk-25*')) {
             $parent = Join-Path $programRoot (Split-Path $pattern -Parent)
             $leaf = Split-Path $pattern -Leaf
             if (Test-Path $parent) {
@@ -50,26 +50,26 @@ function Find-Jdk21 {
     }
 
     foreach ($candidate in ($candidates | Select-Object -Unique)) {
-        if (Test-Jdk21 $candidate) { return $candidate }
+        if (Test-Jdk25 $candidate) { return $candidate }
     }
     return $null
 }
 
-$existing = Find-Jdk21
+$existing = Find-Jdk25
 if ($existing) {
     Save-JdkHome $existing
     exit 0
 }
 
 $architecture = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'aarch64' } else { 'x64' }
-$api = "https://api.adoptium.net/v3/assets/latest/21/hotspot?architecture=$architecture&image_type=jdk&os=windows&vendor=eclipse"
+$api = "https://api.adoptium.net/v3/assets/latest/25/hotspot?architecture=$architecture&image_type=jdk&os=windows&vendor=eclipse"
 $installRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\.tools'))
-$installPath = Join-Path $installRoot 'jdk21'
-$tempPath = Join-Path $env:TEMP ("atlas-jdk21-" + [Guid]::NewGuid().ToString('N'))
-$archivePath = Join-Path $tempPath 'jdk21.zip'
+$installPath = Join-Path $installRoot 'jdk25'
+$tempPath = Join-Path $env:TEMP ("atlas-jdk25-" + [Guid]::NewGuid().ToString('N'))
+$archivePath = Join-Path $tempPath 'jdk25.zip'
 
 try {
-    [Console]::Error.WriteLine('Java 21 was not found. Downloading the Temurin JDK 21 portable archive...')
+    [Console]::Error.WriteLine('Java 25 was not found. Downloading the Temurin JDK 25 portable archive...')
     $asset = (Invoke-RestMethod -Uri $api -Headers @{ 'User-Agent' = 'AtlasClientBuild' })[0]
     $downloadUrl = $asset.binary.package.link
     if ([string]::IsNullOrWhiteSpace($downloadUrl)) { throw 'The JDK download URL was not returned by Adoptium.' }
@@ -91,14 +91,16 @@ try {
 
     if (Test-Path $installPath) { Remove-Item -LiteralPath $installPath -Recurse -Force }
     Move-Item -LiteralPath $jdkDirectory.FullName -Destination $installPath
-    if (!(Test-Jdk21 $installPath)) { throw 'The downloaded JDK did not pass the Java 21 check.' }
+    if (!(Test-Jdk25 $installPath)) { throw 'The downloaded JDK did not pass the Java 25 check.' }
+    $oldJdk21 = Join-Path $installRoot 'jdk21'
+    if (Test-Path $oldJdk21) { Remove-Item -LiteralPath $oldJdk21 -Recurse -Force }
 
     Save-JdkHome $installPath
     exit 0
 }
 catch {
     [Console]::Error.WriteLine("Java setup failed: $($_.Exception.Message)")
-    [Console]::Error.WriteLine('Install a 64-bit JDK 21, then double-click start.bat again.')
+    [Console]::Error.WriteLine('Install a 64-bit JDK 25, then double-click start.bat again.')
     exit 1
 }
 finally {

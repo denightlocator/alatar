@@ -6,7 +6,7 @@ title Atlas Client - Build mod jar
 echo.
 echo  Atlas Client - Minecraft 1.21.11
 echo  -----------------------------------
-echo  Preparing source, Java 21, and the mod build...
+echo  Preparing source, Java 25, and the mod build...
 echo.
 
 set "PROJECT_DIR=%~dp0"
@@ -70,7 +70,7 @@ if exist "%PROJECT_DIR%.tools\java-home.txt" del /q "%PROJECT_DIR%.tools\java-ho
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_DIR%scripts\ensure-java.ps1"
 if errorlevel 1 (
     echo.
-    echo Could not prepare Java 21. See the error above.
+    echo Could not prepare Java 25. See the error above.
     goto :failed
 )
 if not exist "%PROJECT_DIR%.tools\java-home.txt" (

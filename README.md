@@ -14,8 +14,8 @@ A client-only Fabric visual-customization interface for **Minecraft 1.21.11**, s
 
 The project targets Minecraft `1.21.11`, Fabric Loader `0.20.1`, Fabric API `0.141.6+1.21.11`, and Fabric Loom `1.19-SNAPSHOT`.
 
-**Windows quick build:** double-click `start.bat`. If you downloaded only that file, it fetches the full branch into `%USERPROFILE%\AtlasClientBuild` first. It then uses an installed Java 21 JDK or downloads a portable Temurin JDK 21, runs a clean Gradle build, and copies the finished mod jar to `dist/AtlasClient-1.0.0.jar` inside the project folder. Gradle downloads its wrapper and mod dependencies as needed. The first run requires an internet connection and can take a while.
+**Windows quick build:** double-click `start.bat`. If you downloaded only that file, it fetches the full branch into `%USERPROFILE%\AtlasClientBuild` first. It then uses an installed Java 25 JDK or downloads a portable Temurin JDK 25 build runtime, runs a clean Gradle build, and copies the finished mod jar to `dist/AtlasClient-1.0.0.jar` inside the project folder. Gradle downloads its wrapper and mod dependencies as needed. The first run requires an internet connection and can take a while.
 
-**Manual build:** with JDK 21 installed, run `./gradlew build` (PowerShell: `./gradlew.bat build`). The produced mod jar is in `build/libs/`.
+**Manual build:** with JDK 25 installed (the mod is compiled for Java 21), run `./gradlew build` (PowerShell: `./gradlew.bat build`). The produced mod jar is in `build/libs/`.
 
 Appearance controls are client-side and stay in memory for the current game session. Profiles and config import/export are intentionally left for later. The Right Shift toggle is edge-triggered, so holding the key cannot repeatedly open or close the screen.

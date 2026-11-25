@@ -4,6 +4,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
@@ -440,8 +443,11 @@ public final class AtlasScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+        if (button != 0) return super.mouseClicked(event, doubleClick);
         Layout l = layout();
         int navTop = l.headerH + 23;
         for (int i = 0; i < NAV.length; i++) {
@@ -501,7 +507,7 @@ public final class AtlasScreen extends Screen {
             }
         } else {
             if (!activePage.equals("Settings") && !activePage.equals("Visuals") && !activePage.equals("HUD")) {
-                return super.mouseClicked(mouseX, mouseY, button);
+                return super.mouseClicked(event, doubleClick);
             }
             String[] options = utilityOptions(activePage);
             int x = l.contentX;
@@ -516,7 +522,7 @@ public final class AtlasScreen extends Screen {
                 }
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
@@ -544,23 +550,26 @@ public final class AtlasScreen extends Screen {
     }
 
     @Override
-    public boolean charTyped(char codePoint, int modifiers) {
-        if (!Character.isISOControl(codePoint) && search.length() < 40) {
-            search += codePoint;
+    public boolean charTyped(CharacterEvent event) {
+        int codePoint = event.codepoint();
+        if (!Character.isISOControl(codePoint) && search.codePointCount(0, search.length()) < 40) {
+            search += new String(Character.toChars(codePoint));
             for (String group : GROUPS.keySet()) scrollByGroup.put(group, 0);
             return true;
         }
-        return super.charTyped(codePoint, modifiers);
+        return super.charTyped(event);
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(KeyEvent event) {
+        int keyCode = event.key();
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
             onClose();
             return true;
         }
         if (keyCode == GLFW.GLFW_KEY_BACKSPACE && !search.isEmpty()) {
-            search = search.substring(0, search.length() - 1);
+            int lastCodePointStart = search.offsetByCodePoints(search.length(), -1);
+            search = search.substring(0, lastCodePointStart);
             for (String group : GROUPS.keySet()) scrollByGroup.put(group, 0);
             return true;
         }
@@ -569,7 +578,7 @@ public final class AtlasScreen extends Screen {
             for (String group : GROUPS.keySet()) scrollByGroup.put(group, 0);
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(event);
     }
 
     @Override

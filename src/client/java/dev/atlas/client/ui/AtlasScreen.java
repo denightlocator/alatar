@@ -33,6 +33,7 @@ public final class AtlasScreen extends Screen {
 
     private String activePage = "Overview";
     private String search = "";
+    private String selectedUtilityOption;
     private boolean closeRequested;
     private double categoryScrollTarget;
     private double categoryScrollPosition;
@@ -197,24 +198,43 @@ public final class AtlasScreen extends Screen {
     }
 
     private void drawOverview(GuiGraphics g, Font font, Layout l, double scrollPosition) {
-        // The category panes remain intentionally empty; scrolling over them switches categories.
-        int listWidth = l.contentW + l.detailW + (l.detailW > 0 ? 14 : 0);
+        // Category cards echo the reference layout, while their module lists intentionally stay empty.
+        int columns = Math.min(CATEGORY_NAMES.length, l.columns);
+        int maxScroll = Math.max(0, CATEGORY_NAMES.length - columns);
+        categoryScrollTarget = Math.min(categoryScrollTarget, maxScroll);
+        categoryScrollPosition = Math.min(categoryScrollPosition, maxScroll);
+        scrollPosition = Math.max(0, Math.min(maxScroll, scrollPosition));
+        int gap = 12;
+        int cardWidth = (l.contentW - gap * (columns - 1)) / columns;
         int first = Math.max(0, (int) Math.floor(scrollPosition));
-        int last = Math.min(CATEGORY_NAMES.length - 1, (int) Math.ceil(scrollPosition));
-        g.enableScissor(l.contentX, l.contentY, l.contentX + listWidth, l.contentY + l.contentH);
+        int last = Math.min(CATEGORY_NAMES.length - 1, (int) Math.ceil(scrollPosition + columns - 1));
+        g.enableScissor(l.contentX, l.contentY, l.contentX + l.contentW, l.contentY + l.contentH);
         for (int index = first; index <= last; index++) {
-            int y = l.contentY + (int) Math.round((index - scrollPosition) * l.contentH);
-            drawEmptyCategory(g, font, CATEGORY_NAMES[index], l.contentX, y, listWidth, l.contentH);
+            int x = l.contentX + (int) Math.round((index - scrollPosition) * (cardWidth + gap));
+            drawEmptyCategory(g, font, CATEGORY_NAMES[index], x, l.contentY, cardWidth, l.contentH);
         }
         g.disableScissor();
+        drawOverviewDetails(g, font, l);
     }
 
     private void drawEmptyCategory(GuiGraphics g, Font font, String category, int x, int y, int w, int h) {
         panel(g, x, y, w, h, false);
         fillRoundedTopGradient(g, x + 1, y + 1, w - 2, 42, 0xB9233A5D, 0x88213A5E, 10);
-        g.fill(x + 14, y + 42, x + w - 14, y + 43, withAlpha(accent, 82));
-        drawText(g, font, groupGlyph(category), x + 17, y + 14, accentBright, true);
-        drawText(g, font, category, x + 38, y + 14, headingColor(), true);
+        g.fill(x + 12, y + 42, x + w - 12, y + 43, withAlpha(accent, 82));
+        drawText(g, font, groupGlyph(category), x + 13, y + 14, accentBright, true);
+        drawText(g, font, fit(font, category, w - 36), x + 32, y + 14, headingColor(), true);
+    }
+
+    private void drawOverviewDetails(GuiGraphics g, Font font, Layout l) {
+        if (l.detailW <= 0) return;
+        panel(g, l.detailX, l.contentY, l.detailW, l.contentH, true);
+        fillRoundedTopGradient(g, l.detailX + 1, l.contentY + 1, l.detailW - 2, 42,
+                0xD8203B5F, 0xA8172942, 12);
+        drawText(g, font, "OVERVIEW", l.detailX + 14, l.contentY + 14, accentBright, true);
+        drawText(g, font, "EMPTY LIST", l.detailX + 16, l.contentY + 68, headingColor(), true);
+        drawText(g, font, "No module rows are shown.", l.detailX + 16, l.contentY + 90, captionColor(), false);
+        drawWrapped(g, font, "Scroll the center to browse categories.", l.detailX + 16, l.contentY + 112,
+                l.detailW - 32, 48, captionColor());
     }
 
     private void drawVisualGroup(GuiGraphics g, Font font, String title, List<VisualOption> options,
@@ -316,8 +336,7 @@ public final class AtlasScreen extends Screen {
 
     private void drawUtilityPage(GuiGraphics g, Font font, Layout l, double scrollOffset) {
         List<UtilityCard> cards = utilityCards(l, utilityCategories(activePage), scrollOffset);
-        int listWidth = l.contentW + l.detailW + (l.detailW > 0 ? 14 : 0);
-        g.enableScissor(l.contentX, l.contentY, l.contentX + listWidth, l.contentY + l.contentH);
+        g.enableScissor(l.contentX, l.contentY, l.contentX + l.contentW, l.contentY + l.contentH);
         for (UtilityCard card : cards) {
             int x = card.x;
             int y = card.y;
@@ -342,20 +361,77 @@ public final class AtlasScreen extends Screen {
             }
         }
         g.disableScissor();
+        drawUtilityDetails(g, font, l);
+    }
+
+    private void drawUtilityDetails(GuiGraphics g, Font font, Layout l) {
+        if (l.detailW <= 0) return;
+        int x = l.detailX;
+        int y = l.contentY;
+        int w = l.detailW;
+        int h = l.contentH;
+        panel(g, x, y, w, h, true);
+        fillRoundedTopGradient(g, x + 1, y + 1, w - 2, 42, 0xD8203B5F, 0xA8172942, 12);
+        drawText(g, font, "DETAILS", x + 14, y + 14, accentBright, true);
+
+        UtilityCategory selectedCategory = null;
+        if (selectedUtilityOption != null) {
+            for (UtilityCategory category : utilityCategories(activePage)) {
+                if (category.items.contains(selectedUtilityOption)) {
+                    selectedCategory = category;
+                    break;
+                }
+            }
+        }
+        if (selectedCategory == null) {
+            String detailTitle = switch (activePage) {
+                case "About" -> "ATLAS CLIENT";
+                case "Profiles" -> "NO PROFILES";
+                case "Configs" -> "LOCAL SESSION";
+                default -> "SELECT AN OPTION";
+            };
+            String detailText = switch (activePage) {
+                case "About" -> "A visual interface for Minecraft 1.21.11. No gameplay modules are included.";
+                case "Profiles" -> "Visual profile presets are planned for a later update.";
+                case "Configs" -> "Appearance settings stay in memory and are not written to files.";
+                default -> "Choose a row from one of the center categories to inspect its current state.";
+            };
+            drawText(g, font, detailTitle, x + 16, y + 66, headingColor(), true);
+            drawWrapped(g, font, detailText, x + 16, y + 88, w - 32, 110, captionColor());
+            return;
+        }
+
+        drawText(g, font, selectedCategory.title.toUpperCase(Locale.ROOT), x + 16, y + 62, captionColor(), false);
+        drawText(g, font, fit(font, selectedUtilityOption, w - 32), x + 16, y + 81, headingColor(), true);
+        if (selectedCategory.toggles) {
+            int toggleY = y + 124;
+            drawText(g, font, "Enabled", x + 16, toggleY + 4, TEXT, false);
+            drawSwitch(g, x + w - 54, toggleY, utilityValue(selectedUtilityOption));
+            g.fill(x + 15, toggleY + 38, x + w - 15, toggleY + 39, 0x66405D86);
+            drawText(g, font, "VISUAL CONTROL", x + 16, toggleY + 56, accentBright, true);
+            drawWrapped(g, font, selectedUtilityOption + " changes the Atlas interface only.",
+                    x + 16, toggleY + 75, w - 32, 90, captionColor());
+        }
+        drawText(g, font, "SESSION ONLY", x + 14, y + h - 25, DIM, false);
     }
 
     private List<UtilityCategory> utilityCategories(String page) {
         return switch (page) {
             case "Settings" -> List.of(
-                    new UtilityCategory("Layout", List.of("Compact spacing", "Wide cards", "Sidebar labels"), true),
-                    new UtilityCategory("Surfaces", List.of("Gradient panels", "Glass overlay", "Quiet shadows", "Soft edges"), true),
-                    new UtilityCategory("Feedback", List.of("Hover feedback", "Focus highlight", "Section counts"), true));
+                    new UtilityCategory("Layout", List.of("Compact spacing", "Wide cards"), true),
+                    new UtilityCategory("Panels", List.of("Gradient panels", "Glass overlay", "Quiet shadows", "Soft edges"), true),
+                    new UtilityCategory("Navigation", List.of("Sidebar labels", "Section counts"), true),
+                    new UtilityCategory("Feedback", List.of("Hover feedback", "Focus highlight"), true),
+                    new UtilityCategory("Typography", List.of("Bright headings", "Muted captions", "High contrast"), true));
             case "Visuals" -> List.of(
                     new UtilityCategory("Lighting", List.of("Ambient glow", "Edge glow", "Focus highlight"), true),
                     new UtilityCategory("Surfaces", List.of("Gradient panels", "Glass overlay", "Quiet shadows", "Soft edges"), true),
-                    new UtilityCategory("Typography", List.of("Bright headings", "Muted captions", "High contrast", "Compact labels"), true));
+                    new UtilityCategory("Typography", List.of("Bright headings", "Muted captions", "Compact labels"), true),
+                    new UtilityCategory("Contrast", List.of("High contrast", "Reduced glare"), true),
+                    new UtilityCategory("Feedback", List.of("Hover feedback", "Focus highlight"), true));
             case "HUD" -> List.of(
-                    new UtilityCategory("Status", List.of("Show status chips", "Show coordinates"), true),
+                    new UtilityCategory("Status", List.of("Show status chips"), true),
+                    new UtilityCategory("Coordinates", List.of("Show coordinates"), true),
                     new UtilityCategory("Indicators", List.of("Section counts"), true));
             case "Profiles" -> List.of(
                     new UtilityCategory("Profiles", List.of("No saved visual profiles", "Profile presets planned for a later update"), false),
@@ -372,9 +448,9 @@ public final class AtlasScreen extends Screen {
 
     private List<UtilityCard> utilityCards(Layout l, List<UtilityCategory> categories, double scrollOffset) {
         int x = l.contentX;
-        int width = l.contentW + l.detailW + (l.detailW > 0 ? 14 : 0);
+        int width = l.contentW;
         int gap = 12;
-        int columns = Math.min(categories.size(), Math.max(1, (width + gap) / 250));
+        int columns = Math.min(categories.size(), Math.max(1, l.columns));
         int cardWidth = (width - gap * (columns - 1)) / columns;
         List<UtilityCard> cards = new ArrayList<>();
         int y = l.contentY - (int) Math.round(scrollOffset);
@@ -734,6 +810,13 @@ public final class AtlasScreen extends Screen {
             if (inside(mouseX, mouseY, 14, rowY, l.sidebarW - 24, 36)) {
                 if (!activePage.equals(NAV[i])) {
                     activePage = NAV[i];
+                    selectedUtilityOption = null;
+                    for (UtilityCategory category : utilityCategories(activePage)) {
+                        if (category.toggles && !category.items.isEmpty()) {
+                            selectedUtilityOption = category.items.get(0);
+                            break;
+                        }
+                    }
                     utilityScrollTarget = 0;
                     utilityScrollPosition = 0;
                 }
@@ -750,7 +833,17 @@ public final class AtlasScreen extends Screen {
             for (int index = 0; index < card.category.items.size(); index++) {
                 int rowY = card.y + 46 + index * 30;
                 if (inside(mouseX, mouseY, card.x + 8, rowY, card.width - 16, 28)) {
-                    toggleUtilityOption(card.category.items.get(index));
+                    selectedUtilityOption = card.category.items.get(index);
+                    toggleUtilityOption(selectedUtilityOption);
+                    return true;
+                }
+            }
+        }
+        if (l.detailW > 0 && selectedUtilityOption != null) {
+            for (UtilityCategory category : utilityCategories(activePage)) {
+                if (category.toggles && category.items.contains(selectedUtilityOption)
+                        && inside(mouseX, mouseY, l.detailX + l.detailW - 60, l.contentY + 112, 50, 36)) {
+                    toggleUtilityOption(selectedUtilityOption);
                     return true;
                 }
             }
@@ -762,10 +855,11 @@ public final class AtlasScreen extends Screen {
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         if (verticalAmount != 0) {
             Layout l = layout();
-            int listWidth = l.contentW + l.detailW + (l.detailW > 0 ? 14 : 0);
-            if (inside(mouseX, mouseY, l.contentX, l.contentY, listWidth, l.contentH)) {
+            if (inside(mouseX, mouseY, l.contentX, l.contentY, l.contentW, l.contentH)) {
                 if (activePage.equals("Overview")) {
-                    categoryScrollTarget = Math.max(0, Math.min(CATEGORY_NAMES.length - 1,
+                    int columns = Math.min(CATEGORY_NAMES.length, l.columns);
+                    int maxCategoryScroll = Math.max(0, CATEGORY_NAMES.length - columns);
+                    categoryScrollTarget = Math.max(0, Math.min(maxCategoryScroll,
                             categoryScrollTarget - verticalAmount));
                     return true;
                 }

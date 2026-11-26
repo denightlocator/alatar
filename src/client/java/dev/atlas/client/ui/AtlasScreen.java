@@ -12,10 +12,12 @@ import net.minecraft.network.chat.Style;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /** Atlas's client-only visual customization dashboard. */
 public final class AtlasScreen extends Screen {
@@ -44,6 +46,7 @@ public final class AtlasScreen extends Screen {
     private VisualOption selectedOption = GROUPS.get("Palette").get(0);
     private final Map<String, Integer> scrollByGroup = new LinkedHashMap<>();
     private final Map<String, Boolean> pageToggles = new LinkedHashMap<>();
+    private final Set<String> collapsedUtilityCategories = new HashSet<>();
 
     private int accent = DEFAULT_ACCENT;
     private int accentBright = DEFAULT_BRIGHT;
@@ -147,6 +150,8 @@ public final class AtlasScreen extends Screen {
         drawText(g, font, fit(font, query, Math.max(16, searchW - 48)), searchX + 36, 30,
                 search.isEmpty() ? DIM : TEXT, false);
         if (searchX + searchW < width - 94) drawText(g, font, "RIGHT SHIFT", width - 91, 30, accentBright, false);
+        fillRounded(g, width - 35, 22, 24, 24, 0x66263E5C, 8);
+        drawText(g, font, "×", width - 28, 26, captionColor(), true);
     }
 
     private int headerLogoX() {
@@ -162,26 +167,32 @@ public final class AtlasScreen extends Screen {
     }
 
     private void drawSidebar(GuiGraphics g, Font font, Layout l, int mouseX, int mouseY) {
-        panel(g, 8, l.headerH + 10, l.sidebarW - 8, height - l.headerH - 20, false);
+        g.fill(l.sidebarW + 3, l.headerH + 12, l.sidebarW + 4, height - 14, 0x55405D86);
         int y = l.headerH + 25;
         for (int i = 0; i < NAV.length; i++) {
             String item = NAV[i];
             boolean active = item.equals(activePage);
             int rowY = y + i * 43;
             if (active) {
-                fillRoundedGradient(g, 14, rowY, l.sidebarW - 24, 36,
+                fillRoundedGradient(g, 10, rowY, l.sidebarW - 20, 36,
                         withAlpha(accent, 220), withAlpha(accentDark, 190), 10);
-                fillRounded(g, 14, rowY + 6, 3, 24, accentBright, 2);
-            } else if (inside(mouseX, mouseY, 14, rowY, l.sidebarW - 24, 36)) {
-                fillRounded(g, 14, rowY, l.sidebarW - 24, 36, withAlpha(accent, 46), 10);
+                fillRounded(g, 10, rowY + 6, 3, 24, accentBright, 2);
+            } else if (inside(mouseX, mouseY, 10, rowY, l.sidebarW - 20, 36)) {
+                fillRounded(g, 10, rowY, l.sidebarW - 20, 36, withAlpha(accent, 46), 10);
             }
-            drawNavIcon(g, i, 26, rowY + 12, active ? 0xFFFFFFFF : accent);
-            if (sidebarLabels && l.sidebarW >= 106) drawText(g, font, item, 49, rowY + 13, active ? TEXT : captionColor(), false);
+            drawNavIcon(g, i, 23, rowY + 12, active ? 0xFFFFFFFF : accent);
+            if (sidebarLabels && l.sidebarW >= 106) drawText(g, font, item, 47, rowY + 13, active ? TEXT : captionColor(), false);
         }
-        int footerY = height - 57;
-        g.fill(17, footerY - 8, l.sidebarW - 16, footerY - 7, 0x66405D86);
-        drawText(g, font, "ATLAS", 22, footerY, accentBright, true);
-        if (l.sidebarW >= 106) drawText(g, font, "build 1.0.0", 22, footerY + 14, DIM, false);
+        int footerY = height - 96;
+        panel(g, 10, footerY, l.sidebarW - 20, 80, true);
+        fillRoundedGradient(g, l.sidebarW / 2 - 16, footerY + 8, 32, 30, accentBright, accentDark, 9);
+        drawText(g, font, "A", l.sidebarW / 2 - 4, footerY + 16, 0xFFFFFFFF, true);
+        if (l.sidebarW >= 106) {
+            drawText(g, font, "Atlas Client", Math.max(12, l.sidebarW / 2 - 37), footerY + 44, headingColor(), true);
+            drawText(g, font, "build 1.0.0", Math.max(12, l.sidebarW / 2 - 30), footerY + 61, DIM, false);
+        } else {
+            drawText(g, font, "1.0.0", 17, footerY + 53, DIM, false);
+        }
     }
 
     private double animateCategoryScroll() {
@@ -221,7 +232,7 @@ public final class AtlasScreen extends Screen {
         panel(g, x, y, w, h, false);
         fillRoundedTopGradient(g, x + 1, y + 1, w - 2, 42, 0xB9233A5D, 0x88213A5E, 10);
         g.fill(x + 12, y + 42, x + w - 12, y + 43, withAlpha(accent, 82));
-        drawText(g, font, groupGlyph(category), x + 13, y + 14, accentBright, true);
+        drawCategoryIcon(g, category, x + 12, y + 13, accentBright);
         drawText(g, font, fit(font, category, w - 36), x + 32, y + 14, headingColor(), true);
     }
 
@@ -335,6 +346,10 @@ public final class AtlasScreen extends Screen {
     }
 
     private void drawUtilityPage(GuiGraphics g, Font font, Layout l, double scrollOffset) {
+        int maxScroll = utilityScrollMaximum(l);
+        utilityScrollTarget = Math.min(utilityScrollTarget, maxScroll);
+        utilityScrollPosition = Math.min(utilityScrollPosition, maxScroll);
+        scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
         List<UtilityCard> cards = utilityCards(l, utilityCategories(activePage), scrollOffset);
         g.enableScissor(l.contentX, l.contentY, l.contentX + l.contentW, l.contentY + l.contentH);
         for (UtilityCard card : cards) {
@@ -345,10 +360,11 @@ public final class AtlasScreen extends Screen {
             UtilityCategory category = card.category;
             panel(g, x, y, w, h, false);
             fillRoundedTopGradient(g, x + 1, y + 1, w - 2, 38, 0xB9233A5D, 0x88213A5E, 10);
-            drawText(g, font, groupGlyph(category.title), x + 14, y + 12, accentBright, true);
-            drawText(g, font, fit(font, category.title, w - 44), x + 33, y + 12, headingColor(), true);
+            drawCategoryIcon(g, category.title, x + 12, y + 11, accentBright);
+            drawText(g, font, fit(font, category.title, w - 56), x + 33, y + 12, headingColor(), true);
+            drawChevron(g, x + w - 20, y + 17, card.collapsed, accentBright);
             g.fill(x + 12, y + 38, x + w - 12, y + 39, withAlpha(accent, 82));
-            for (int i = 0; i < category.items.size(); i++) {
+            if (!card.collapsed) for (int i = 0; i < category.items.size(); i++) {
                 String item = category.items.get(i);
                 int rowY = y + 46 + i * 30;
                 if (category.toggles) {
@@ -373,6 +389,7 @@ public final class AtlasScreen extends Screen {
         panel(g, x, y, w, h, true);
         fillRoundedTopGradient(g, x + 1, y + 1, w - 2, 42, 0xD8203B5F, 0xA8172942, 12);
         drawText(g, font, "DETAILS", x + 14, y + 14, accentBright, true);
+        drawText(g, font, "×", x + w - 22, y + 12, captionColor(), true);
 
         UtilityCategory selectedCategory = null;
         if (selectedUtilityOption != null) {
@@ -404,13 +421,43 @@ public final class AtlasScreen extends Screen {
         drawText(g, font, selectedCategory.title.toUpperCase(Locale.ROOT), x + 16, y + 62, captionColor(), false);
         drawText(g, font, fit(font, selectedUtilityOption, w - 32), x + 16, y + 81, headingColor(), true);
         if (selectedCategory.toggles) {
-            int toggleY = y + 124;
-            drawText(g, font, "Enabled", x + 16, toggleY + 4, TEXT, false);
-            drawSwitch(g, x + w - 54, toggleY, utilityValue(selectedUtilityOption));
-            g.fill(x + 15, toggleY + 38, x + w - 15, toggleY + 39, 0x66405D86);
-            drawText(g, font, "VISUAL CONTROL", x + 16, toggleY + 56, accentBright, true);
-            drawWrapped(g, font, selectedUtilityOption + " changes the Atlas interface only.",
-                    x + 16, toggleY + 75, w - 32, 90, captionColor());
+            VisualOption detail = findVisualOption(selectedUtilityOption);
+            if (detail != null && detail.palette) {
+                drawText(g, font, "ACTIVE PALETTE", x + 16, y + 124, accentBright, true);
+                fillRounded(g, x + 16, y + 151, w - 32, 18, detail.accent, 8);
+                fillRounded(g, x + 16, y + 175, w - 32, 8, detail.accentBright, 4);
+                fillRounded(g, x + 16, y + 188, w - 32, 5, detail.accentDark, 3);
+                drawWrapped(g, font, detail.description, x + 16, y + 210, w - 32, 76, captionColor());
+            } else {
+                int toggleY = y + 124;
+                drawText(g, font, "Enabled", x + 16, toggleY + 4, TEXT, false);
+                drawSwitch(g, x + w - 54, toggleY, utilityValue(selectedUtilityOption));
+                g.fill(x + 15, toggleY + 38, x + w - 15, toggleY + 39, 0x66405D86);
+                if (detail != null) {
+                    int controlY = toggleY + 56;
+                    boolean hasIntensity = selectedUtilityOption.equals("Ambient glow") || selectedUtilityOption.equals("Edge glow");
+                    boolean hasTreatment = selectedUtilityOption.equals("Soft edges");
+                    if (hasIntensity) {
+                        drawText(g, font, "Intensity", x + 16, controlY, TEXT, false);
+                        drawText(g, font, detail.intensity + "%", x + w - 48, controlY, captionColor(), false);
+                        drawSlider(g, x + 16, controlY + 17, w - 32, detail.intensity / 100.0);
+                        controlY += 52;
+                    }
+                    if (hasTreatment) {
+                        drawText(g, font, "Treatment", x + 16, controlY, TEXT, false);
+                        drawText(g, font, detail.treatment, x + w - 68, controlY, accentBright, false);
+                        drawChevron(g, x + w - 21, controlY + 3, false, accentBright);
+                        controlY += 24;
+                    }
+                    fillRounded(g, x + 13, controlY + 5, w - 26, 66, 0x70172942, 9);
+                    drawText(g, font, "STYLE NOTE", x + 22, controlY + 14, accentBright, true);
+                    drawWrapped(g, font, detail.description, x + 22, controlY + 31, w - 44, 36, captionColor());
+                } else {
+                    drawText(g, font, "VISUAL CONTROL", x + 16, toggleY + 56, accentBright, true);
+                    drawWrapped(g, font, selectedUtilityOption + " changes the Atlas interface only.",
+                            x + 16, toggleY + 75, w - 32, 90, captionColor());
+                }
+            }
         }
         drawText(g, font, "SESSION ONLY", x + 14, y + h - 25, DIM, false);
     }
@@ -420,10 +467,12 @@ public final class AtlasScreen extends Screen {
             case "Settings" -> List.of(
                     new UtilityCategory("Layout", List.of("Compact spacing", "Wide cards"), true),
                     new UtilityCategory("Panels", List.of("Gradient panels", "Glass overlay", "Quiet shadows", "Soft edges"), true),
-                    new UtilityCategory("Navigation", List.of("Sidebar labels", "Section counts"), true),
+                    new UtilityCategory("Lighting", List.of("Ambient glow", "Edge glow"), true),
+                    new UtilityCategory("Typography", List.of("Bright headings", "Muted captions", "High contrast"), true),
                     new UtilityCategory("Feedback", List.of("Hover feedback", "Focus highlight"), true),
-                    new UtilityCategory("Typography", List.of("Bright headings", "Muted captions", "High contrast"), true));
+                    new UtilityCategory("Navigation", List.of("Sidebar labels", "Section counts"), true));
             case "Visuals" -> List.of(
+                    new UtilityCategory("Palette", List.of("Ocean blue", "Glacier", "Sapphire", "Midnight cyan"), true),
                     new UtilityCategory("Lighting", List.of("Ambient glow", "Edge glow", "Focus highlight"), true),
                     new UtilityCategory("Surfaces", List.of("Gradient panels", "Glass overlay", "Quiet shadows", "Soft edges"), true),
                     new UtilityCategory("Typography", List.of("Bright headings", "Muted captions", "Compact labels"), true),
@@ -458,16 +507,28 @@ public final class AtlasScreen extends Screen {
             int rowCount = Math.min(columns, categories.size() - start);
             int rowHeight = 0;
             for (int i = 0; i < rowCount; i++) {
-                rowHeight = Math.max(rowHeight, 50 + categories.get(start + i).items.size() * 30);
+                UtilityCategory category = categories.get(start + i);
+                int cardHeight = isUtilityCategoryCollapsed(activePage, category.title)
+                        ? 50 : 50 + category.items.size() * 30;
+                rowHeight = Math.max(rowHeight, cardHeight);
             }
             for (int i = 0; i < rowCount; i++) {
                 UtilityCategory category = categories.get(start + i);
-                cards.add(new UtilityCard(category, x + i * (cardWidth + gap), y, cardWidth,
-                        50 + category.items.size() * 30));
+                boolean collapsed = isUtilityCategoryCollapsed(activePage, category.title);
+                int cardHeight = collapsed ? 50 : 50 + category.items.size() * 30;
+                cards.add(new UtilityCard(category, x + i * (cardWidth + gap), y, cardWidth, cardHeight, collapsed));
             }
             y += rowHeight + gap;
         }
         return cards;
+    }
+
+    private String utilityCategoryKey(String page, String category) {
+        return page + ":" + category;
+    }
+
+    private boolean isUtilityCategoryCollapsed(String page, String category) {
+        return collapsedUtilityCategories.contains(utilityCategoryKey(page, category));
     }
 
     private int utilityScrollMaximum(Layout l) {
@@ -477,6 +538,8 @@ public final class AtlasScreen extends Screen {
     }
 
     private boolean utilityValue(String option) {
+        VisualOption visual = findVisualOption(option);
+        if (visual != null && visual.palette) return visual.enabled;
         return switch (option) {
             case "Compact spacing" -> compactSpacing;
             case "Wide cards" -> wideCards;
@@ -498,7 +561,21 @@ public final class AtlasScreen extends Screen {
         };
     }
 
+    private VisualOption findVisualOption(String name) {
+        for (List<VisualOption> options : GROUPS.values()) {
+            for (VisualOption option : options) {
+                if (option.name.equals(name)) return option;
+            }
+        }
+        return null;
+    }
+
     private void toggleUtilityOption(String option) {
+        VisualOption visual = findVisualOption(option);
+        if (visual != null && visual.palette) {
+            setVisualOption(visual, true);
+            return;
+        }
         boolean value = !utilityValue(option);
         switch (option) {
             case "Compact spacing" -> compactSpacing = value;
@@ -596,9 +673,11 @@ public final class AtlasScreen extends Screen {
                 g.fill(x + 5, y + 5, x + 7, y + 7, 0xFF0B1427);
             }
             case 2 -> {
-                g.fill(x + 1, y + 5, x + 11, y + 7, color);
-                g.fill(x + 3, y + 3, x + 9, y + 9, color);
-                g.fill(x + 5, y + 5, x + 7, y + 7, 0xFF0B1427);
+                fillRounded(g, x + 1, y + 2, 12, 11, color, 6);
+                g.fill(x + 8, y + 8, x + 14, y + 14, 0xFF0B1427);
+                g.fill(x + 3, y + 4, x + 5, y + 6, 0xFF0B1427);
+                g.fill(x + 7, y + 3, x + 9, y + 5, 0xFF0B1427);
+                g.fill(x + 4, y + 9, x + 6, y + 11, 0xFF0B1427);
             }
             case 3 -> {
                 g.fill(x, y + 7, x + 3, y + 12, color);
@@ -606,13 +685,17 @@ public final class AtlasScreen extends Screen {
                 g.fill(x + 10, y, x + 13, y + 12, color);
             }
             case 4 -> {
-                g.fill(x + 4, y, x + 9, y + 5, color);
-                g.fill(x + 2, y + 6, x + 11, y + 12, color);
+                g.fill(x + 2, y + 4, x + 7, y + 9, color);
+                g.fill(x + 7, y + 4, x + 12, y + 9, color);
+                g.fill(x + 4, y + 1, x + 10, y + 5, color);
+                g.fill(x + 4, y + 8, x + 10, y + 13, color);
+                g.fill(x + 5, y + 5, x + 9, y + 8, 0xFF0B1427);
             }
             case 5 -> {
-                g.fill(x + 1, y + 1, x + 12, y + 3, color);
-                g.fill(x + 1, y + 5, x + 10, y + 7, color);
-                g.fill(x + 1, y + 9, x + 12, y + 11, color);
+                g.fill(x + 2, y + 5, x + 12, y + 12, color);
+                g.fill(x + 3, y + 2, x + 8, y + 10, color);
+                g.fill(x + 7, y, x + 12, y + 9, color);
+                g.fill(x + 4, y + 8, x + 10, y + 10, 0xFF0B1427);
             }
             default -> {
                 g.fill(x + 1, y + 1, x + 12, y + 12, color);
@@ -620,6 +703,18 @@ public final class AtlasScreen extends Screen {
                 g.fill(x + 6, y + 5, x + 8, y + 9, color);
                 g.fill(x + 6, y + 3, x + 8, y + 4, color);
             }
+        }
+    }
+
+    private void drawChevron(GuiGraphics g, int x, int y, boolean collapsed, int color) {
+        if (collapsed) {
+            g.fill(x, y, x + 2, y + 2, color);
+            g.fill(x + 2, y + 2, x + 4, y + 4, color);
+            g.fill(x, y + 4, x + 2, y + 6, color);
+        } else {
+            g.fill(x, y, x + 2, y + 2, color);
+            g.fill(x + 2, y + 2, x + 4, y + 4, color);
+            g.fill(x + 4, y, x + 6, y + 2, color);
         }
     }
 
@@ -814,6 +909,7 @@ public final class AtlasScreen extends Screen {
                     for (UtilityCategory category : utilityCategories(activePage)) {
                         if (category.toggles && !category.items.isEmpty()) {
                             selectedUtilityOption = category.items.get(0);
+                            selectedOption = findVisualOption(selectedUtilityOption);
                             break;
                         }
                     }
@@ -826,25 +922,57 @@ public final class AtlasScreen extends Screen {
         int searchX = headerSearchX();
         int searchW = headerSearchWidth();
         if (inside(mouseX, mouseY, searchX, 18, searchW, 34)) return true;
+        if (inside(mouseX, mouseY, width - 37, 18, 28, 32)) {
+            closeRequested = true;
+            return true;
+        }
 
         if (activePage.equals("Overview")) return super.mouseClicked(event, doubleClick);
         for (UtilityCard card : utilityCards(l, utilityCategories(activePage), utilityScrollPosition)) {
-            if (!card.category.toggles) continue;
+            if (inside(mouseX, mouseY, card.x + card.width - 30, card.y + 3, 26, 32)) {
+                String key = utilityCategoryKey(activePage, card.category.title);
+                if (!collapsedUtilityCategories.remove(key)) collapsedUtilityCategories.add(key);
+                return true;
+            }
+            if (!card.category.toggles || card.collapsed) continue;
             for (int index = 0; index < card.category.items.size(); index++) {
                 int rowY = card.y + 46 + index * 30;
                 if (inside(mouseX, mouseY, card.x + 8, rowY, card.width - 16, 28)) {
                     selectedUtilityOption = card.category.items.get(index);
+                    VisualOption visualOption = findVisualOption(selectedUtilityOption);
+                    if (visualOption != null) selectedOption = visualOption;
                     toggleUtilityOption(selectedUtilityOption);
                     return true;
                 }
             }
         }
-        if (l.detailW > 0 && selectedUtilityOption != null) {
-            for (UtilityCategory category : utilityCategories(activePage)) {
-                if (category.toggles && category.items.contains(selectedUtilityOption)
-                        && inside(mouseX, mouseY, l.detailX + l.detailW - 60, l.contentY + 112, 50, 36)) {
-                    toggleUtilityOption(selectedUtilityOption);
-                    return true;
+        if (l.detailW > 0) {
+            if (inside(mouseX, mouseY, l.detailX + l.detailW - 34, l.contentY + 6, 26, 28)) {
+                selectedUtilityOption = null;
+                return true;
+            }
+            if (selectedUtilityOption != null) {
+                for (UtilityCategory category : utilityCategories(activePage)) {
+                    if (!category.toggles || !category.items.contains(selectedUtilityOption)) continue;
+                    VisualOption detail = findVisualOption(selectedUtilityOption);
+                    if ((detail == null || !detail.palette)
+                            && inside(mouseX, mouseY, l.detailX + l.detailW - 60, l.contentY + 112, 50, 36)) {
+                        toggleUtilityOption(selectedUtilityOption);
+                        return true;
+                    }
+                    if (detail != null && !detail.palette
+                            && (selectedUtilityOption.equals("Ambient glow") || selectedUtilityOption.equals("Edge glow"))
+                            && inside(mouseX, mouseY, l.detailX + 10, l.contentY + 194, l.detailW - 20, 22)) {
+                        detail.intensity = (int) Math.round(Math.max(0, Math.min(1,
+                                (mouseX - (l.detailX + 16)) / (l.detailW - 32.0))) * 100);
+                        return true;
+                    }
+                    if (detail != null && !detail.palette && selectedUtilityOption.equals("Soft edges")
+                            && inside(mouseX, mouseY, l.detailX + 12, l.contentY + 172, l.detailW - 24, 30)) {
+                        detail.treatment = detail.treatment.equals("Soft") ? "Crisp" : "Soft";
+                        softEdges = detail.treatment.equals("Soft");
+                        return true;
+                    }
                 }
             }
         }
@@ -915,6 +1043,79 @@ public final class AtlasScreen extends Screen {
 
     private static boolean inside(double x, double y, int left, int top, int w, int h) {
         return x >= left && y >= top && x < left + w && y < top + h;
+    }
+
+    private void drawCategoryIcon(GuiGraphics g, String category, int x, int y, int color) {
+        switch (category) {
+            case "Palette" -> {
+                fillRounded(g, x, y + 1, 14, 12, color, 7);
+                g.fill(x + 8, y + 8, x + 14, y + 14, 0xFF0B1427);
+                g.fill(x + 3, y + 3, x + 5, y + 5, 0xFF0B1427);
+                g.fill(x + 7, y + 2, x + 9, y + 4, 0xFF0B1427);
+                g.fill(x + 3, y + 8, x + 5, y + 10, 0xFF0B1427);
+            }
+            case "Layout" -> {
+                g.fill(x, y, x + 5, y + 5, color);
+                g.fill(x + 8, y, x + 13, y + 5, color);
+                g.fill(x, y + 8, x + 5, y + 13, color);
+                g.fill(x + 8, y + 8, x + 13, y + 13, color);
+            }
+            case "Panels", "Surfaces" -> {
+                g.fill(x, y, x + 14, y + 2, color);
+                g.fill(x, y + 2, x + 2, y + 12, color);
+                g.fill(x + 12, y + 2, x + 14, y + 12, color);
+                g.fill(x + 2, y + 12, x + 12, y + 14, color);
+                g.fill(x + 4, y + 5, x + 10, y + 7, withAlpha(color, 180));
+            }
+            case "Lighting" -> {
+                g.fill(x + 4, y + 4, x + 10, y + 10, color);
+                g.fill(x + 6, y, x + 8, y + 3, color);
+                g.fill(x + 6, y + 11, x + 8, y + 14, color);
+                g.fill(x, y + 6, x + 3, y + 8, color);
+                g.fill(x + 11, y + 6, x + 14, y + 8, color);
+            }
+            case "Typography" -> {
+                g.fill(x + 1, y + 1, x + 13, y + 3, color);
+                g.fill(x + 6, y + 3, x + 8, y + 12, color);
+                g.fill(x + 3, y + 12, x + 11, y + 14, color);
+            }
+            case "Navigation" -> {
+                for (int row = 0; row < 3; row++) {
+                    g.fill(x + 4, y + 2 + row * 4, x + 14, y + 4 + row * 4, color);
+                    g.fill(x, y + 2 + row * 4, x + 2, y + 4 + row * 4, color);
+                }
+            }
+            case "Feedback" -> {
+                g.fill(x + 1, y + 6, x + 5, y + 9, color);
+                g.fill(x + 4, y + 8, x + 7, y + 12, color);
+                g.fill(x + 6, y + 5, x + 14, y + 8, color);
+            }
+            case "Status", "Indicators" -> {
+                g.fill(x, y + 9, x + 3, y + 14, color);
+                g.fill(x + 5, y + 5, x + 8, y + 14, color);
+                g.fill(x + 10, y, x + 13, y + 14, color);
+            }
+            case "Coordinates" -> {
+                g.fill(x + 6, y, x + 8, y + 14, color);
+                g.fill(x, y + 6, x + 14, y + 8, color);
+                g.fill(x + 4, y + 4, x + 10, y + 10, 0xFF0B1427);
+            }
+            case "Profiles" -> {
+                g.fill(x + 4, y, x + 10, y + 6, color);
+                g.fill(x + 2, y + 7, x + 12, y + 14, color);
+            }
+            case "Storage", "Tools" -> {
+                g.fill(x + 1, y + 5, x + 13, y + 13, color);
+                g.fill(x + 3, y + 2, x + 9, y + 9, color);
+                g.fill(x + 7, y, x + 12, y + 8, color);
+            }
+            default -> {
+                g.fill(x + 1, y + 1, x + 13, y + 13, color);
+                g.fill(x + 3, y + 3, x + 11, y + 11, 0xFF0B1427);
+                g.fill(x + 6, y + 4, x + 8, y + 9, color);
+                g.fill(x + 6, y + 10, x + 8, y + 12, color);
+            }
+        }
     }
 
     private static String groupGlyph(String group) {
@@ -989,7 +1190,7 @@ public final class AtlasScreen extends Screen {
                           int columns, int detailX, int detailW) {}
 
     private record UtilityCategory(String title, List<String> items, boolean toggles) {}
-    private record UtilityCard(UtilityCategory category, int x, int y, int width, int height) {}
+    private record UtilityCard(UtilityCategory category, int x, int y, int width, int height, boolean collapsed) {}
 
     private static final class VisualOption {
         private final String group;

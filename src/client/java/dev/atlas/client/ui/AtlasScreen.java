@@ -37,6 +37,9 @@ public final class AtlasScreen extends Screen {
     private double categoryScrollTarget;
     private double categoryScrollPosition;
     private long lastCategoryAnimationNanos;
+    private double utilityScrollTarget;
+    private double utilityScrollPosition;
+    private long lastUtilityAnimationNanos;
     private VisualOption selectedOption = GROUPS.get("Palette").get(0);
     private final Map<String, Integer> scrollByGroup = new LinkedHashMap<>();
     private final Map<String, Boolean> pageToggles = new LinkedHashMap<>();
@@ -94,7 +97,7 @@ public final class AtlasScreen extends Screen {
         if (activePage.equals("Overview")) {
             drawOverview(graphics, font, layout, animateCategoryScroll());
         } else {
-            drawUtilityPage(graphics, font, layout);
+            drawUtilityPage(graphics, font, layout, animateUtilityScroll());
         }
         super.render(graphics, mouseX, mouseY, partialTick);
     }
@@ -298,65 +301,103 @@ public final class AtlasScreen extends Screen {
         drawText(g, font, "VISUAL CONTROLS ONLY", x + 12, y + h - 29, DIM, false);
     }
 
-    private void drawUtilityPage(GuiGraphics g, Font font, Layout l) {
-        int x = l.contentX;
-        int y = l.contentY;
-        int w = l.contentW + l.detailW + (l.detailW > 0 ? 14 : 0);
-        panel(g, x, y, w, l.contentH, false);
-        String subtitle = switch (activePage) {
-            case "Settings" -> "Tune the Atlas interface to your preference.";
-            case "Visuals" -> "Personalize colors, panels, lighting, and visual density.";
-            case "HUD" -> "Choose which interface elements are shown.";
-            case "Profiles" -> "Visual profile tools and presets.";
-            case "Configs" -> "Appearance configuration and local storage.";
-            default -> "Atlas Client · a visual-first interface for Minecraft 1.21.11.";
-        };
-        drawText(g, font, activePage.toUpperCase(Locale.ROOT), x + 18, y + 18, accentBright, true);
-        drawText(g, font, subtitle, x + 18, y + 36, captionColor(), false);
-        g.fill(x + 18, y + 57, x + w - 18, y + 58, 0x66405D86);
+    private double animateUtilityScroll() {
+        long now = System.nanoTime();
+        if (lastUtilityAnimationNanos == 0) lastUtilityAnimationNanos = now;
+        double deltaSeconds = Math.min(0.05, (now - lastUtilityAnimationNanos) / 1_000_000_000.0);
+        lastUtilityAnimationNanos = now;
+        double easing = 1.0 - Math.exp(-deltaSeconds / 0.12);
+        utilityScrollPosition += (utilityScrollTarget - utilityScrollPosition) * easing;
+        if (Math.abs(utilityScrollTarget - utilityScrollPosition) < 0.5) {
+            utilityScrollPosition = utilityScrollTarget;
+        }
+        return utilityScrollPosition;
+    }
 
-        if (activePage.equals("Profiles") || activePage.equals("Configs") || activePage.equals("About")) {
-            int rowY = y + 72;
-            String[] lines = utilityInfoRows(activePage);
-            for (int i = 0; i < lines.length; i++) {
-                int cardY = rowY + i * 40;
-                fillRoundedGradient(g, x + 16, cardY, w - 32, 32, 0xA8192B45, 0x88152A47, 9);
-                drawRoundedBorder(g, x + 16, cardY, w - 32, 32, withAlpha(accent, 72), 9);
-                drawText(g, font, fit(font, lines[i], w - 58), x + 28, cardY + 10,
-                        i == 0 ? TEXT : captionColor(), i == 0);
+    private void drawUtilityPage(GuiGraphics g, Font font, Layout l, double scrollOffset) {
+        List<UtilityCard> cards = utilityCards(l, utilityCategories(activePage), scrollOffset);
+        int listWidth = l.contentW + l.detailW + (l.detailW > 0 ? 14 : 0);
+        g.enableScissor(l.contentX, l.contentY, l.contentX + listWidth, l.contentY + l.contentH);
+        for (UtilityCard card : cards) {
+            int x = card.x;
+            int y = card.y;
+            int w = card.width;
+            int h = card.height;
+            UtilityCategory category = card.category;
+            panel(g, x, y, w, h, false);
+            fillRoundedTopGradient(g, x + 1, y + 1, w - 2, 38, 0xB9233A5D, 0x88213A5E, 10);
+            drawText(g, font, groupGlyph(category.title), x + 14, y + 12, accentBright, true);
+            drawText(g, font, fit(font, category.title, w - 44), x + 33, y + 12, headingColor(), true);
+            g.fill(x + 12, y + 38, x + w - 12, y + 39, withAlpha(accent, 82));
+            for (int i = 0; i < category.items.size(); i++) {
+                String item = category.items.get(i);
+                int rowY = y + 46 + i * 30;
+                if (category.toggles) {
+                    drawCheck(g, x + 13, rowY + 5, utilityValue(item));
+                    drawText(g, font, fit(font, item, w - 48), x + 36, rowY + 8, TEXT, false);
+                } else {
+                    fillRounded(g, x + 16, rowY + 9, 7, 7, accentBright, 4);
+                    drawText(g, font, fit(font, item, w - 44), x + 31, rowY + 7, i == 0 ? TEXT : captionColor(), i == 0);
+                }
             }
-            return;
         }
-
-        drawText(g, font, "OPTIONS", x + 20, y + 72, accentBright, true);
-        String[] options = utilityOptions(activePage);
-        int rowY = y + 91;
-        for (int i = 0; i < options.length; i++) {
-            String option = options[i];
-            int rowYPosition = rowY + i * 36;
-            fillRounded(g, x + 16, rowYPosition, w - 32, 31, 0x70192B45, 8);
-            drawRoundedBorder(g, x + 16, rowYPosition, w - 32, 31, withAlpha(accent, 55), 8);
-            drawCheck(g, x + 25, rowYPosition + 8, utilityValue(option));
-            drawText(g, font, fit(font, option, w - 78), x + 50, rowYPosition + 10, TEXT, false);
-        }
-        drawText(g, font, "Changes apply to this interface for the current session.",
-                x + 18, y + l.contentH - 12, DIM, false);
+        g.disableScissor();
     }
 
-    private String[] utilityInfoRows(String page) {
+    private List<UtilityCategory> utilityCategories(String page) {
         return switch (page) {
-            case "Profiles" -> new String[]{"No saved visual profiles yet", "Profile presets are planned for a later update.", "Current appearance remains active for this game session."};
-            case "Configs" -> new String[]{"No configuration files loaded", "Import and export tools are planned for a later update.", "Atlas does not write config files in this build."};
-            default -> new String[]{"Atlas Client", "Fabric interface for Minecraft 1.21.11.", "Right Shift opens and closes this dashboard.", "Visual interface only; no gameplay modules."};
+            case "Settings" -> List.of(
+                    new UtilityCategory("Layout", List.of("Compact spacing", "Wide cards", "Sidebar labels"), true),
+                    new UtilityCategory("Surfaces", List.of("Gradient panels", "Glass overlay", "Quiet shadows", "Soft edges"), true),
+                    new UtilityCategory("Feedback", List.of("Hover feedback", "Focus highlight", "Section counts"), true));
+            case "Visuals" -> List.of(
+                    new UtilityCategory("Lighting", List.of("Ambient glow", "Edge glow", "Focus highlight"), true),
+                    new UtilityCategory("Surfaces", List.of("Gradient panels", "Glass overlay", "Quiet shadows", "Soft edges"), true),
+                    new UtilityCategory("Typography", List.of("Bright headings", "Muted captions", "High contrast", "Compact labels"), true));
+            case "HUD" -> List.of(
+                    new UtilityCategory("Status", List.of("Show status chips", "Show coordinates"), true),
+                    new UtilityCategory("Indicators", List.of("Section counts"), true));
+            case "Profiles" -> List.of(
+                    new UtilityCategory("Profiles", List.of("No saved visual profiles", "Profile presets planned for a later update"), false),
+                    new UtilityCategory("Session", List.of("Appearance stays active for this game session"), false));
+            case "Configs" -> List.of(
+                    new UtilityCategory("Storage", List.of("No configuration files loaded", "Atlas does not write config files in this build"), false),
+                    new UtilityCategory("Tools", List.of("Import and export planned for a later update"), false));
+            default -> List.of(
+                    new UtilityCategory("Atlas Client", List.of("Fabric interface for Minecraft 1.21.11", "Right Shift opens and closes Atlas"), false),
+                    new UtilityCategory("Scope", List.of("Visual interface only", "No gameplay modules"), false),
+                    new UtilityCategory("Build", List.of("Version 1.0.0", "Client-side only"), false));
         };
     }
 
-    private String[] utilityOptions(String page) {
-        return switch (page) {
-            case "Settings" -> new String[]{"Compact spacing", "Wide cards", "Quiet shadows", "Gradient panels", "Glass overlay"};
-            case "HUD" -> new String[]{"Show status chips", "Show coordinates", "Section counts"};
-            default -> new String[]{"Ambient glow", "Edge glow", "Focus highlight", "Gradient panels", "Glass overlay", "Quiet shadows"};
-        };
+    private List<UtilityCard> utilityCards(Layout l, List<UtilityCategory> categories, double scrollOffset) {
+        int x = l.contentX;
+        int width = l.contentW + l.detailW + (l.detailW > 0 ? 14 : 0);
+        int gap = 12;
+        int columns = Math.min(categories.size(), Math.max(1, (width + gap) / 250));
+        int cardWidth = (width - gap * (columns - 1)) / columns;
+        List<UtilityCard> cards = new ArrayList<>();
+        int y = l.contentY - (int) Math.round(scrollOffset);
+        for (int start = 0; start < categories.size(); start += columns) {
+            int rowCount = Math.min(columns, categories.size() - start);
+            int rowHeight = 0;
+            for (int i = 0; i < rowCount; i++) {
+                rowHeight = Math.max(rowHeight, 50 + categories.get(start + i).items.size() * 30);
+            }
+            for (int i = 0; i < rowCount; i++) {
+                UtilityCategory category = categories.get(start + i);
+                cards.add(new UtilityCard(category, x + i * (cardWidth + gap), y, cardWidth,
+                        50 + category.items.size() * 30));
+            }
+            y += rowHeight + gap;
+        }
+        return cards;
+    }
+
+    private int utilityScrollMaximum(Layout l) {
+        int contentBottom = utilityCards(l, utilityCategories(activePage), 0).stream()
+                .mapToInt(card -> card.y + card.height).max().orElse(l.contentY);
+        return Math.max(0, contentBottom - (l.contentY + l.contentH));
     }
 
     private boolean utilityValue(String option) {
@@ -374,6 +415,8 @@ public final class AtlasScreen extends Screen {
             case "Bright headings" -> brightHeadings;
             case "Muted captions", "Reduced glare" -> mutedCaptions;
             case "High contrast" -> highContrast;
+            case "Sidebar labels" -> sidebarLabels;
+            case "Hover feedback" -> hoverFeedback;
             case "Section counts" -> sectionCounts;
             default -> pageToggles.getOrDefault(option, true);
         };
@@ -395,6 +438,8 @@ public final class AtlasScreen extends Screen {
             case "Bright headings" -> brightHeadings = value;
             case "Muted captions", "Reduced glare" -> mutedCaptions = value;
             case "High contrast" -> highContrast = value;
+            case "Sidebar labels" -> sidebarLabels = value;
+            case "Hover feedback" -> hoverFeedback = value;
             case "Section counts" -> sectionCounts = value;
             default -> pageToggles.put(option, value);
         }
@@ -687,7 +732,11 @@ public final class AtlasScreen extends Screen {
         for (int i = 0; i < NAV.length; i++) {
             int rowY = navTop + i * 43;
             if (inside(mouseX, mouseY, 14, rowY, l.sidebarW - 24, 36)) {
-                activePage = NAV[i];
+                if (!activePage.equals(NAV[i])) {
+                    activePage = NAV[i];
+                    utilityScrollTarget = 0;
+                    utilityScrollPosition = 0;
+                }
                 return true;
             }
         }
@@ -696,18 +745,14 @@ public final class AtlasScreen extends Screen {
         if (inside(mouseX, mouseY, searchX, 18, searchW, 34)) return true;
 
         if (activePage.equals("Overview")) return super.mouseClicked(event, doubleClick);
-        if (!activePage.equals("Settings") && !activePage.equals("Visuals") && !activePage.equals("HUD")) {
-            return super.mouseClicked(event, doubleClick);
-        }
-        String[] options = utilityOptions(activePage);
-        int x = l.contentX;
-        int y = l.contentY;
-        int w = l.contentW + l.detailW + (l.detailW > 0 ? 14 : 0);
-        for (int index = 0; index < options.length; index++) {
-            int rowY = y + 91 + index * 36;
-            if (inside(mouseX, mouseY, x + 16, rowY, w - 32, 31)) {
-                toggleUtilityOption(options[index]);
-                return true;
+        for (UtilityCard card : utilityCards(l, utilityCategories(activePage), utilityScrollPosition)) {
+            if (!card.category.toggles) continue;
+            for (int index = 0; index < card.category.items.size(); index++) {
+                int rowY = card.y + 46 + index * 30;
+                if (inside(mouseX, mouseY, card.x + 8, rowY, card.width - 16, 28)) {
+                    toggleUtilityOption(card.category.items.get(index));
+                    return true;
+                }
             }
         }
         return super.mouseClicked(event, doubleClick);
@@ -715,13 +760,20 @@ public final class AtlasScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        if (activePage.equals("Overview") && verticalAmount != 0) {
+        if (verticalAmount != 0) {
             Layout l = layout();
             int listWidth = l.contentW + l.detailW + (l.detailW > 0 ? 14 : 0);
             if (inside(mouseX, mouseY, l.contentX, l.contentY, listWidth, l.contentH)) {
-                categoryScrollTarget = Math.max(0, Math.min(CATEGORY_NAMES.length - 1,
-                        categoryScrollTarget - verticalAmount));
-                return true;
+                if (activePage.equals("Overview")) {
+                    categoryScrollTarget = Math.max(0, Math.min(CATEGORY_NAMES.length - 1,
+                            categoryScrollTarget - verticalAmount));
+                    return true;
+                }
+                int maxScroll = utilityScrollMaximum(l);
+                if (maxScroll > 0) {
+                    utilityScrollTarget = Math.max(0, Math.min(maxScroll, utilityScrollTarget - verticalAmount * 36));
+                    return true;
+                }
             }
         }
         return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
@@ -778,7 +830,7 @@ public final class AtlasScreen extends Screen {
             case "Lighting" -> "L";
             case "Typography" -> "T";
             case "Layout" -> "G";
-            default -> "F";
+            default -> group.isEmpty() ? "" : group.substring(0, 1).toUpperCase(Locale.ROOT);
         };
     }
 
@@ -841,6 +893,9 @@ public final class AtlasScreen extends Screen {
 
     private record Layout(int sidebarW, int headerH, int contentX, int contentY, int contentW, int contentH,
                           int columns, int detailX, int detailW) {}
+
+    private record UtilityCategory(String title, List<String> items, boolean toggles) {}
+    private record UtilityCard(UtilityCategory category, int x, int y, int width, int height) {}
 
     private static final class VisualOption {
         private final String group;
